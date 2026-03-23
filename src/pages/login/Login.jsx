@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import { useGoogleLogin } from '@react-oauth/google';
 import { toast } from 'react-toastify';
 
 import '../../styles/login.scss';
@@ -16,6 +17,14 @@ function Login() {
 	const [timer, setTimer] = useState(120);
 	const [emailForm, setEmailForm] = useState('block');
 	const [otpForm, setOtpForm] = useState('none');
+
+	const googleResponse = async (authResult) => {
+		try {
+			console.log(authResult);
+		} catch (err) {
+			console.log(err.message);
+		}
+	};
 
 	const sendMail = async (e) => {
 		e.preventDefault();
@@ -103,6 +112,11 @@ function Login() {
 
 							<button
 								type="button"
+								onClick={useGoogleLogin({
+									onSuccess: googleResponse,
+									onError: googleResponse,
+									flow: 'auth-code',
+								})}
 								className="btn btn-google w-100 d-flex align-items-center justify-content-center gap-2">
 								<i className="bi bi-google"></i> Continue with Google
 							</button>
