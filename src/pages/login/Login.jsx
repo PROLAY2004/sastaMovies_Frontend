@@ -52,6 +52,12 @@ function Login() {
 		return () => clearInterval(interval);
 	}, [timer]);
 
+	const loginWithGoogle = useGoogleLogin({
+		onSuccess: googleResponse,
+		onError: googleResponse,
+		flow: 'auth-code',
+	});
+
 	return (
 		<>
 			<div className="overlay"></div>
@@ -105,11 +111,7 @@ function Login() {
 
 							<button
 								type="button"
-								onClick={useGoogleLogin({
-									onSuccess: googleResponse,
-									onError: googleResponse,
-									flow: 'auth-code',
-								})}
+								onClick={loginWithGoogle}
 								className="btn btn-google w-100 d-flex align-items-center justify-content-center gap-2">
 								<i className="bi bi-google"></i> Continue with Google
 							</button>

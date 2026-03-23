@@ -21,7 +21,7 @@ export default async function sendOtp(email, setLoading, toast) {
 				theme: 'dark',
 			});
 
-			return true;
+            return true;
 		} else {
 			toast.error(result.message, {
 				position: 'top-right',
