@@ -1,0 +1,60 @@
+:root {
+    /* Colors */
+    --color-primary: #f5b81b;
+    --color-primary-dark: #e0a30f;
+    --color-primary-light: #ffcd4a;
+    --color-black: #000000;
+    --color-black-light: #0a0a0a;
+    --color-black-lighter: #111111;
+    --color-gray: #9a9a9a;
+    --color-gray-light: #b0b0b0;
+    --color-gray-lighter: #cccccc;
+    --color-white: #ffffff;
+    --color-white-dark: #e5e5e5;
+
+    /* Gradients */
+    --gradient-nav: linear-gradient(to bottom,
+            rgba(0, 0, 0, 0.85),
+            rgba(0, 0, 0, 0.4));
+    --gradient-hero: linear-gradient(90deg,
+            rgba(0, 0, 0, 0.85) 0%,
+            rgba(0, 0, 0, 0.4) 50%,
+            rgba(0, 0, 0, 0.2) 100%);
+    --gradient-trial: linear-gradient(135deg, #0f0f0f 0%, #030303 100%);
+
+    /* Spacing */
+    --spacing-xs: 0.5rem;
+    --spacing-sm: 0.8rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
+    --spacing-2xl: 3rem;
+
+    /* Border Radius */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 24px;
+    --radius-xl: 40px;
+    --radius-full: 50%;
+
+    /* Transitions */
+    --transition-fast: 0.2s;
+    --transition-normal: 0.25s;
+
+    /* Font Sizes */
+    --font-xs: 0.7rem;
+    --font-sm: 0.8rem;
+    --font-md: 0.85rem;
+    --font-lg: 0.95rem;
+    --font-xl: 1.2rem;
+    --font-2xl: 1.4rem;
+    --font-3xl: 2rem;
+    --font-4xl: 3.2rem;
+
+    /* Font Weights */
+    --font-regular: 400;
+    --font-medium: 500;
+    --font-semibold: 600;
+    --font-bold: 700;
+    --font-extrabold: 800;
+}
