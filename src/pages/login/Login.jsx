@@ -1,14 +1,21 @@
 import '../../styles/login.scss';
+import { useState } from 'react';
 
 function Login() {
+	const [email, setEmail] = useState('');
+
+	const sendMail = async (e) => {
+		e.preventDefault();
+		console.log(email);
+	};
+
 	return (
 		<>
 			<div className="overlay"></div>
-
 			<div className="container-fluid container-main">
 				<div className="row w-100 align-items-center">
 					<div className="col-lg-5 d-flex justify-content-center">
-						<div className="login-box">
+						<form className="login-box" onSubmit={sendMail} method="post">
 							<div className="logo">
 								Sasta<span>Movies</span>
 							</div>
@@ -22,11 +29,13 @@ function Login() {
 								<input
 									type="email"
 									className="form-control"
+									value={email}
+									onChange={(e) => setEmail(e.target.value)}
 									placeholder="Enter your email"
 								/>
 							</div>
 
-							<button className="btn btn-main w-100 mb-3">
+							<button className="btn btn-main w-100 mb-3" type="submit">
 								Continue with Email
 							</button>
 
@@ -41,7 +50,7 @@ function Login() {
 							<div className="footer-text">
 								Access is limited to approved users only
 							</div>
-						</div>
+						</form>
 					</div>
 
 					<div className="col-lg-7 d-none d-lg-block">
