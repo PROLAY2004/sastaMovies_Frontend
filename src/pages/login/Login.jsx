@@ -7,6 +7,7 @@ import '../../styles/login.scss';
 import sendOtp from './sendOtp.js';
 import userLogin from './userLogin.js';
 import isAuthenticated from '../../utils/checkAuth.js';
+import googleResponse from './googleAuth.js';
 
 function Login() {
 	const navigate = useNavigate();
@@ -17,14 +18,6 @@ function Login() {
 	const [timer, setTimer] = useState(120);
 	const [emailForm, setEmailForm] = useState('block');
 	const [otpForm, setOtpForm] = useState('none');
-
-	const googleResponse = async (authResult) => {
-		try {
-			console.log(authResult);
-		} catch (err) {
-			console.log(err.message);
-		}
-	};
 
 	const sendMail = async (e) => {
 		e.preventDefault();
