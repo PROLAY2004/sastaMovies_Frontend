@@ -1,0 +1,386 @@
+ @import './common/root';
+
+ /* main layout */
+ .main-content {
+     position: relative;
+     z-index: 2;
+     padding: 2rem 1rem 4rem;
+     max-width: 1280px;
+     margin: 0 auto;
+ }
+
+ /* header / logout row */
+ .profile-header-bar {
+     display: flex;
+     justify-content: space-between;
+     align-items: center;
+     flex-wrap: wrap;
+     margin-bottom: 2rem;
+     gap: 1rem;
+ }
+
+ .greeting-block h1 {
+     font-size: 2rem;
+     font-weight: 700;
+     letter-spacing: -0.02em;
+     background: linear-gradient(135deg, #ffffff, #F5B81B);
+     background-clip: text;
+     -webkit-background-clip: text;
+     color: transparent;
+     margin-bottom: 0.25rem;
+ }
+
+ .greeting-block p {
+     font-size: 0.85rem;
+     color: #8e94a8;
+     margin: 0;
+ }
+
+ .logout-btn {
+     background: rgba(245, 184, 27, 0.08);
+     border: 1px solid rgba(245, 184, 27, 0.25);
+     padding: 0.5rem 1.2rem;
+     border-radius: 60px;
+     font-weight: 500;
+     font-size: 0.8rem;
+     color: #F5B81B;
+     transition: all 0.2s ease;
+     backdrop-filter: blur(4px);
+     display: inline-flex;
+     align-items: center;
+     gap: 8px;
+     cursor: pointer;
+ }
+
+ .logout-btn:hover {
+     background: rgba(245, 184, 27, 0.18);
+     border-color: #F5B81B;
+     transform: translateY(-1px);
+ }
+
+ /* ----- PROFILE CARD (clean, minimal, glassmorphic) ----- */
+ .profile-card-modern {
+     background: rgba(12, 15, 22, 0.75);
+     backdrop-filter: blur(16px);
+     border-radius: 2rem;
+     border: 1px solid rgba(245, 184, 27, 0.2);
+     padding: 1.8rem;
+     margin-bottom: 2.5rem;
+     transition: all 0.2s;
+ }
+
+ .profile-row {
+     display: flex;
+     flex-wrap: wrap;
+     justify-content: space-between;
+     align-items: flex-start;
+     gap: 1.5rem;
+ }
+
+ .profile-identity {
+     display: flex;
+     align-items: center;
+     gap: 1.2rem;
+     flex-wrap: wrap;
+ }
+
+ .avatar-circle {
+     width: 68px;
+     height: 68px;
+     background: linear-gradient(145deg, rgba(245, 184, 27, 0.2), rgba(245, 184, 27, 0.05));
+     border-radius: 50%;
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     border: 1.5px solid rgba(245, 184, 27, 0.5);
+     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+ }
+
+ .avatar-circle i {
+     font-size: 2.2rem;
+     color: #F5B81B;
+ }
+
+ .name-email h2 {
+     font-size: 1.5rem;
+     font-weight: 700;
+     margin-bottom: 0.2rem;
+     letter-spacing: -0.3px;
+ }
+
+ .name-email p {
+     color: #9ca3af;
+     font-size: 0.8rem;
+     margin: 0;
+     display: flex;
+     align-items: center;
+     gap: 5px;
+ }
+
+ .edit-profile-action {
+     background: transparent;
+     border: 1px solid rgba(245, 184, 27, 0.3);
+     padding: 0.5rem 1.2rem;
+     border-radius: 40px;
+     color: #F5B81B;
+     font-size: 0.75rem;
+     font-weight: 500;
+     transition: all 0.2s;
+     cursor: pointer;
+     display: flex;
+     align-items: center;
+     gap: 6px;
+ }
+
+ .edit-profile-action:hover {
+     background: rgba(245, 184, 27, 0.1);
+     border-color: #F5B81B;
+ }
+
+ /* info chips grid (clean metrics) */
+ .stats-grid {
+     display: flex;
+     flex-wrap: wrap;
+     gap: 1rem;
+     margin-top: 1.6rem;
+ }
+
+ .stat-chip {
+     background: rgba(0, 0, 0, 0.45);
+     border-radius: 1.2rem;
+     padding: 0.8rem 1.2rem;
+     flex: 1 1 180px;
+     border: 1px solid rgba(245, 184, 27, 0.1);
+     transition: 0.2s;
+ }
+
+ .stat-chip:hover {
+     border-color: rgba(245, 184, 27, 0.3);
+     background: rgba(0, 0, 0, 0.55);
+ }
+
+ .stat-label {
+     display: flex;
+     align-items: center;
+     gap: 6px;
+     font-size: 0.7rem;
+     text-transform: uppercase;
+     letter-spacing: 0.5px;
+     color: #9aa1b5;
+     margin-bottom: 0.5rem;
+ }
+
+ .stat-label i {
+     color: #F5B81B;
+     font-size: 0.8rem;
+ }
+
+ .stat-value {
+     font-weight: 700;
+     font-size: 0.95rem;
+     color: white;
+ }
+
+ .sub-badge {
+     display: inline-block;
+     background: rgba(0, 255, 150, 0.12);
+     padding: 0.2rem 0.8rem;
+     border-radius: 40px;
+     font-size: 0.7rem;
+     font-weight: 600;
+     color: #2ecc71;
+     border: 1px solid rgba(46, 204, 113, 0.3);
+ }
+
+ /* watchlist section header */
+ .watchlist-header {
+     display: flex;
+     justify-content: space-between;
+     align-items: center;
+     margin-bottom: 1.6rem;
+     flex-wrap: wrap;
+     gap: 1rem;
+ }
+
+ .watchlist-header h3 {
+     font-size: 1.3rem;
+     font-weight: 700;
+     display: flex;
+     align-items: center;
+     gap: 0.5rem;
+     margin: 0;
+ }
+
+ .watchlist-header h3 i {
+     color: #F5B81B;
+ }
+
+ .clear-all-btn {
+     background: transparent;
+     border: 1px solid rgba(255, 77, 77, 0.4);
+     padding: 0.4rem 1rem;
+     border-radius: 50px;
+     font-size: 0.7rem;
+     font-weight: 500;
+     color: #ff7e7e;
+     transition: 0.2s;
+     display: flex;
+     align-items: center;
+     gap: 6px;
+ }
+
+ .clear-all-btn:hover {
+     background: rgba(255, 77, 77, 0.12);
+     border-color: #ff5e5e;
+ }
+
+ /* Movies grid — minimal, no text overlay mess, clean card style */
+ .movies-grid {
+     display: grid;
+     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+     gap: 1.5rem;
+ }
+
+ .movie-card {
+     position: relative;
+     border-radius: 1.2rem;
+     transition: transform 0.25s ease, box-shadow 0.2s;
+     cursor: pointer;
+     background: transparent;
+ }
+
+ .movie-card:hover {
+     transform: translateY(-5px);
+ }
+
+ .movie-poster-wrapper {
+     position: relative;
+     border-radius: 1.2rem;
+     overflow: hidden;
+     aspect-ratio: 2 / 3;
+     background: #0a0c12;
+ }
+
+ .movie-poster {
+     width: 100%;
+     height: 100%;
+     object-fit: cover;
+     transition: transform 0.4s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+     border-radius: 1.2rem;
+     border: 1px solid rgba(245, 184, 27, 0.2);
+ }
+
+ .movie-card:hover .movie-poster {
+     transform: scale(1.03);
+ }
+
+ .remove-icon-btn {
+     position: absolute;
+     top: 10px;
+     right: 10px;
+     background: rgba(0, 0, 0, 0.7);
+     backdrop-filter: blur(4px);
+     width: 30px;
+     height: 30px;
+     border-radius: 50%;
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     cursor: pointer;
+     border: 1px solid rgba(255, 255, 240, 0.2);
+     z-index: 5;
+     transition: 0.2s;
+ }
+
+ .remove-icon-btn i {
+     font-size: 0.75rem;
+     color: #ffaaaa;
+ }
+
+ .remove-icon-btn:hover {
+     background: #e34d4d;
+     transform: scale(1.05);
+ }
+
+ .remove-icon-btn:hover i {
+     color: white;
+ }
+
+ .movie-info {
+     margin-top: 0.6rem;
+     padding: 0 0.2rem;
+ }
+
+ .movie-info h4 {
+     font-size: 0.85rem;
+     font-weight: 700;
+     margin: 0 0 0.2rem;
+     white-space: nowrap;
+     overflow: hidden;
+     text-overflow: ellipsis;
+ }
+
+ .movie-meta {
+     display: flex;
+     justify-content: space-between;
+     font-size: 0.65rem;
+     color: #a1a9bc;
+ }
+
+ .movie-rating {
+     color: #F5B81B;
+     font-weight: 600;
+ }
+
+ /* empty state elegant */
+ .empty-watchlist {
+     background: rgba(12, 15, 22, 0.6);
+     border-radius: 1.6rem;
+     padding: 2.5rem 1rem;
+     text-align: center;
+     border: 1px dashed rgba(245, 184, 27, 0.3);
+ }
+
+ .empty-watchlist i {
+     font-size: 2.8rem;
+     color: #F5B81B;
+     opacity: 0.5;
+     margin-bottom: 1rem;
+ }
+
+ .empty-watchlist p {
+     color: #b9c0d4;
+     font-size: 0.85rem;
+ }
+
+ .browse-button {
+     background: #F5B81B;
+     border: none;
+     padding: 0.55rem 1.8rem;
+     border-radius: 60px;
+     font-weight: 600;
+     font-size: 0.8rem;
+     color: #0b0f17;
+     display: inline-flex;
+     align-items: center;
+     gap: 8px;
+     margin-top: 0.6rem;
+     transition: all 0.2s;
+     cursor: pointer;
+ }
+
+ .browse-button:hover {
+     background: #e0aa18;
+     transform: scale(0.98);
+     box-shadow: 0 6px 14px rgba(245, 184, 27, 0.25);
+ }
+
+ .profile-footer {
+     background: #03050a;
+     border-top: 1px solid rgba(245, 184, 27, 0.1);
+     padding: 2rem 0;
+     margin-top: 3rem;
+     text-align: center;
+     font-size: 0.7rem;
+     color: #6f768b;
+ }

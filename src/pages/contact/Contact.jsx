@@ -5,8 +5,6 @@ import Footer from '../../components/Footer.jsx';
 function Home() {
 	return (
 		<>
-			<div className="texture-overlay"></div>
-
 			<Nav />
 
 			<div className="main-content">

@@ -11,8 +11,6 @@ function Home() {
 
 	return (
 		<>
-			<div className="texture-overlay"></div>
-
 			<Nav />
 
 			<div className="hero-wrapper" id="heroSection">

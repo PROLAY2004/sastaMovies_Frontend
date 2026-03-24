@@ -9,6 +9,7 @@ import Movies from '../pages/movie/Movies.jsx';
 import Series from '../pages/series/Series.jsx';
 import Contact from '../pages/contact/Contact.jsx';
 import Login from '../pages/login/Login.jsx';
+import Dashboard from '../pages/dashboard/Dashboard.jsx';
 
 const router = createBrowserRouter([
 	{
@@ -44,7 +45,7 @@ const router = createBrowserRouter([
 		path: '/account',
 		element: (
 			<ProtectedRoute>
-				<h1>Profile</h1>
+				<Dashboard />
 			</ProtectedRoute>
 		),
 	},

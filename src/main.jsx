@@ -11,6 +11,7 @@ import router from './routes/Router.jsx';
 
 createRoot(document.getElementById('root')).render(
 	<>
+		<div className="texture-overlay"></div>
 		<ToastContainer
 			position="top-right"
 			autoClose={5000}
