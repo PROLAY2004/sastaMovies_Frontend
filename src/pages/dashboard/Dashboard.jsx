@@ -3,7 +3,7 @@ import '../../styles/account.scss';
 function Dashboard() {
 	return (
 		<>
-			<main className="main-content">
+			<main className="profile-content">
 				<div className="profile-header-bar">
 					<div className="greeting-block">
 						<h1>
