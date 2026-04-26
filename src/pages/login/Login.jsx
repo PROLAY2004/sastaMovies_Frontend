@@ -15,6 +15,7 @@ function Login() {
 	const [loading, setLoading] = useState(false);
 	const [processing, setProcessing] = useState(false);
 	const [otp, setOtp] = useState('');
+	const [timerActive, setTimerActive] = useState(false);
 	const [timer, setTimer] = useState(120);
 	const [emailForm, setEmailForm] = useState('block');
 	const [otpForm, setOtpForm] = useState('none');
@@ -26,6 +27,9 @@ function Login() {
 		if (isSuccess) {
 			setEmailForm('none');
 			setOtpForm('block');
+
+			setTimer(120);
+			setTimerActive(true);
 		}
 	};
 
@@ -43,14 +47,14 @@ function Login() {
 			navigate('/account', { replace: true });
 		}
 
-		if (timer === 0) return;
+		if (timer === 0 || !timerActive) return;
 
 		const interval = setInterval(() => {
 			setTimer((prev) => prev - 1);
 		}, 1000);
 
 		return () => clearInterval(interval);
-	}, [timer]);
+	}, [timer, timerActive]);
 
 	const loginWithGoogle = useGoogleLogin({
 		onSuccess: googleResponse,
@@ -146,21 +150,6 @@ function Login() {
 								/>
 							</div>
 
-							<div
-								className="text-center mb-3"
-								style={{ fontSize: '13px', color: '#9ca3af' }}>
-								{timer > 0 ? (
-									<>
-										Resend OTP in{' '}
-										<span style={{ color: '#facc15' }}>{timer}s</span>
-									</>
-								) : (
-									<span style={{ color: '#22c55e' }}>
-										You can resend OTP now
-									</span>
-								)}
-							</div>
-
 							<button
 								disabled={loading}
 								className="btn btn-main w-100 mb-3 d-flex justify-content-center gap-2 text-dark align-items-center"
@@ -178,33 +167,45 @@ function Login() {
 								)}
 							</button>
 
-							<button
-								type="button"
-								onClick={() => {
-									setTimer(120);
-									sendOtp(email, setProcessing, toast);
-								}}
-								disabled={timer !== 0}
-								className="btn btn-google w-100 d-flex align-items-center justify-content-center gap-2"
-								style={{
-									opacity: timer !== 0 ? 0.5 : 1,
-									cursor: timer !== 0 ? 'not-allowed' : 'pointer',
-								}}>
-								{processing ? (
-									<>
-										<div
-											className="spinner-border"
-											role="status"
-											style={{ width: '20px', height: '20px' }}></div>{' '}
-										Please Wait...
-									</>
-								) : (
-									'🔄 Resend OTP'
-								)}
-							</button>
-
 							<div className="footer-text">
-								Didn’t receive the code? Check spam or try again
+								Didn’t receive the code?
+								<div style={{ fontSize: '13px', color: '#9ca3af' }}>
+									{timer > 0 ? (
+										<>
+											Resend OTP in{' '}
+											<span style={{ color: '#facc15' }}>{timer}s</span>
+										</>
+									) : (
+										<button
+											type="button"
+											onClick={() => {
+												setTimer(120);
+												setTimerActive(true);
+												sendOtp(email, setProcessing, toast);
+											}}
+											disabled={timer !== 0}
+											className="resend-btn"
+											style={{
+												opacity: timer !== 0 ? 0.5 : 1,
+												cursor: timer !== 0 ? 'not-allowed' : 'pointer',
+											}}>
+											{processing ? (
+												<>
+													<div
+														className="spinner-border"
+														role="status"
+														style={{
+															width: '20px',
+															height: '20px',
+														}}></div>{' '}
+													Please Wait...
+												</>
+											) : (
+												'Resend OTP'
+											)}
+										</button>
+									)}
+								</div>
 							</div>
 						</form>
 					</div>

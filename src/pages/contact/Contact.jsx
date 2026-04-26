@@ -33,7 +33,7 @@ function Home() {
 												<label className="form-label">Full Name</label>
 												<input
 													type="text"
-													className="form-control"
+													className="contact-form-control"
 													id="fullName"
 													placeholder="John Doe"
 													required
@@ -45,7 +45,7 @@ function Home() {
 												<label className="form-label">Email Address</label>
 												<input
 													type="email"
-													className="form-control"
+													className="contact-form-control"
 													id="emailAddress"
 													placeholder="john@example.com"
 													required
@@ -57,7 +57,7 @@ function Home() {
 									<div className="form-group">
 										<label className="form-label">Message</label>
 										<textarea
-											className="form-control"
+											className="contact-form-control"
 											id="messageText"
 											rows="5"
 											placeholder="Tell us how we can help you..."
