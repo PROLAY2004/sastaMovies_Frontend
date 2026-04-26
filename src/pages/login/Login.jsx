@@ -57,8 +57,17 @@ function Login() {
 	}, [timer, timerActive]);
 
 	const loginWithGoogle = useGoogleLogin({
-		onSuccess: googleResponse,
-		onError: googleResponse,
+		onSuccess: async (response) => {
+			const isLogged = await googleResponse(response, toast);
+
+			if (isLogged) {
+				navigate('/dashboard', { replace: true });
+			}
+		},
+		onError: (err) => {
+			toast.error("Google login failed");
+			console.log(err);
+		},
 		flow: 'auth-code',
 	});
 
