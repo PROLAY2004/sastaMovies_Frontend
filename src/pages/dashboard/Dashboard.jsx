@@ -86,15 +86,33 @@ function Dashboard() {
 					</button>
 				</div>
 
-				<div id="savedMoviesContainer">
-					<div className="empty-watchlist">
+				<div>
+					<div class="movies-grid">
+						<div class="movie-card">
+							<div class="movie-poster-wrapper">
+								<img src="https://m.media-amazon.com/images/M/MV5BNmZkZjQ5YzItOGQ0MC00ZmVlLWIxNjgtYzU2MmYzYjFmZWI2XkEyXkFqcGc@._V1_.jpg" class="movie-poster" loading="lazy" />
+								<div class="remove-icon-btn">
+									<i class="bi bi-x-lg"></i>
+								</div>
+							</div>
+							<div class="movie-info">
+								<h4>Name</h4>
+								<div class="movie-meta">
+									<span>Year</span>
+									<span class="movie-rating"><i class="bi bi-star-fill" style={{ fontSize: '0.6rem' }}></i> Rating</span>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					{/* <div className="empty-watchlist">
 						<i className="bi bi-bookmark-heart"></i>
 						<p>Your watchlist feels empty</p>
 						<p>Add movies & series you love to watch later</p>
 						<button className="browse-button" id="emptyBrowseBtn">
 							Browse collections
 						</button>
-					</div>
+					</div> */}
 				</div>
 			</main>
 

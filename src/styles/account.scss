@@ -243,7 +243,7 @@
 
  .movie-card {
      position: relative;
-     border-radius: 1.2rem;
+    border-radius: 6px;
      transition: transform 0.25s ease, box-shadow 0.2s;
      cursor: pointer;
      background: transparent;
@@ -255,7 +255,7 @@
 
  .movie-poster-wrapper {
      position: relative;
-     border-radius: 1.2rem;
+    border-radius: 4px;
      overflow: hidden;
      aspect-ratio: 2 / 3;
      background: #0a0c12;
@@ -266,7 +266,7 @@
      height: 100%;
      object-fit: cover;
      transition: transform 0.4s cubic-bezier(0.2, 0.9, 0.4, 1.1);
-     border-radius: 1.2rem;
+    border-radius: 4px;
      border: 1px solid rgba(245, 184, 27, 0.2);
  }
 
@@ -307,8 +307,7 @@
  }
 
  .movie-info {
-     margin-top: 0.6rem;
-     padding: 0 0.2rem;
+        padding: 0.75rem;
  }
 
  .movie-info h4 {

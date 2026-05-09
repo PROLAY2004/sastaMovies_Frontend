@@ -40,7 +40,6 @@ const router = createBrowserRouter([
 			</GoogleOAuthProvider>
 		),
 	},
-
 	{
 		path: '/account',
 		element: (
