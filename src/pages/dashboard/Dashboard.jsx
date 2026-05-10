@@ -1,13 +1,76 @@
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
+
+import ProfileCards from '../../components/ProfileCards.jsx';
+import ProfileLoader from '../../components/Loader/profileLoader.jsx';
+import displayProfile from './fetchDashboard.js'
+
 import '../../styles/account.scss';
 
 function Dashboard() {
+	const navigate = useNavigate();
+	const [loading, setLoading] = useState(true);
+	const [name, setName] = useState('');
+	const [email, setEmail] = useState('');
+	const [memberSince, setMemberSince] = useState('');
+	const [status, setStatus] = useState('')
+	const [validTill, setValidTill] = useState('');
+	const [savedCount, setSavedCount] = useState(0);
+
+	const setSubscription = (data) => {
+		if (data.isSuperAdmin) {
+			setStatus('SuperAdmin')
+		}
+
+		if (data.role == 'admin') {
+			setStatus('Admin');
+		}
+
+		if (data.isBlocked) {
+			setStatus('Blocked');
+		}
+
+		if (new Date(data.validTill > new Date())) {
+			setStatus('Active');
+		}
+		else {
+			setStatus('Expired');
+		}
+	}
+
+	const handleDisplay = async () => {
+		setLoading(true);
+
+		const isSuccess = await displayProfile(navigate, toast);
+
+		if (isSuccess) {
+			setName(isSuccess.userInfo.name);
+			setEmail(isSuccess.userInfo.email);
+			setMemberSince(isSuccess.userSince);
+			setSubscription(isSuccess.userInfo);
+			setValidTill(isSuccess.validTill);
+			setSavedCount(isSuccess.contentCount);
+
+			console.log(isSuccess)
+		}
+
+		setLoading(false);
+	}
+
+	useEffect(() => {
+		handleDisplay();
+	}, [])
+
 	return (
 		<>
-			<main className="profile-content">
+			<ProfileLoader loading={loading} />
+
+			<main className="profile-content" style={{ display: loading ? 'none' : 'block' }}>
 				<div className="profile-header-bar">
 					<div className="greeting-block">
 						<h1>
-							Welcome back, <span id="userFirstName">Alex</span>
+							Welcome back, <span id="userFirstName">{name}</span>
 						</h1>
 						<p>Your premium hub — watchlist & profile</p>
 					</div>
@@ -23,13 +86,13 @@ function Dashboard() {
 								<i className="bi bi-person-fill"></i>
 							</div>
 							<div className="name-email">
-								<h2 id="profileFullName">Alex Thompson</h2>
+								<h2 id="profileFullName">{name}</h2>
 								<p>
 									<i
 										className="bi bi-envelope-fill"
 										style={{ fontSize: '0.7rem' }}></i>{' '}
 									<span id="profileEmailDisplay">
-										alex.thompson@sastamovies.com
+										{email}
 									</span>
 								</p>
 							</div>
@@ -45,7 +108,7 @@ function Dashboard() {
 								<i className="bi bi-calendar3"></i> MEMBER SINCE
 							</div>
 							<div className="stat-value" id="memberSinceDisplay">
-								March 15, 2024
+								{memberSince}
 							</div>
 						</div>
 						<div className="stat-chip">
@@ -53,8 +116,8 @@ function Dashboard() {
 								<i className="bi bi-gem"></i> SUBSCRIPTION
 							</div>
 							<div className="stat-value">
-								<span className="sub-badge" id="subscriptionStatusBadge">
-									Active
+								<span className={status + " sub-badge"}>
+									{status}
 								</span>
 							</div>
 						</div>
@@ -63,7 +126,7 @@ function Dashboard() {
 								<i className="bi bi-hourglass-bottom"></i> ACCESS UNTIL
 							</div>
 							<div className="stat-value" id="accessUntilDisplay">
-								December 31, 2025
+								{validTill}
 							</div>
 						</div>
 						<div className="stat-chip">
@@ -71,7 +134,7 @@ function Dashboard() {
 								<i className="bi bi-bookmark-heart"></i> WATCH LATER
 							</div>
 							<div className="stat-value" id="savedCountDisplay">
-								6 items
+								{savedCount} items
 							</div>
 						</div>
 					</div>
@@ -86,37 +149,22 @@ function Dashboard() {
 					</button>
 				</div>
 
-				<div>
-					<div class="movies-grid">
-						<div class="movie-card">
-							<div class="movie-poster-wrapper">
-								<img src="https://m.media-amazon.com/images/M/MV5BNmZkZjQ5YzItOGQ0MC00ZmVlLWIxNjgtYzU2MmYzYjFmZWI2XkEyXkFqcGc@._V1_.jpg" class="movie-poster" loading="lazy" />
-								<div class="remove-icon-btn">
-									<i class="bi bi-x-lg"></i>
-								</div>
-							</div>
-							<div class="movie-info">
-								<h4>Name</h4>
-								<div class="movie-meta">
-									<span>Year</span>
-									<span class="movie-rating"><i class="bi bi-star-fill" style={{ fontSize: '0.6rem' }}></i> Rating</span>
-								</div>
-							</div>
-						</div>
-					</div>
-
-					{/* <div className="empty-watchlist">
-						<i className="bi bi-bookmark-heart"></i>
-						<p>Your watchlist feels empty</p>
-						<p>Add movies & series you love to watch later</p>
-						<button className="browse-button" id="emptyBrowseBtn">
-							Browse collections
-						</button>
-					</div> */}
+				<div className="movies-grid">
+					<ProfileCards />
 				</div>
+
+				{/* <div className="empty-watchlist">
+					<i className="bi bi-bookmark-heart"></i>
+					<p>Your watchlist feels empty</p>
+					<p>Add movies & series you love to watch later</p>
+					<button className="browse-button" id="emptyBrowseBtn">
+						Browse collections
+					</button>
+				</div> */}
+
 			</main>
 
-			<footer className="profile-footer">
+			<footer className="profile-footer" style={{ display: loading ? 'none' : 'block' }}>
 				<div className="container text-center">
 					<p>© 2026 SastaMovies — All Rights Reserved. Stream the future.</p>
 				</div>

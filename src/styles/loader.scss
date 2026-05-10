@@ -1,0 +1,128 @@
+.profile-skeleton {
+    .skeleton {
+        position: relative;
+        overflow: hidden;
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+
+        &::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -150px;
+            height: 100%;
+            width: 150px;
+            background: linear-gradient(90deg,
+                    transparent,
+                    rgba(255, 255, 255, 0.12),
+                    transparent);
+            animation: shimmer 1.3s infinite;
+        }
+    }
+
+    @keyframes shimmer {
+        100% {
+            left: 120%;
+        }
+    }
+
+    .skeleton-title {
+        width: 280px;
+        height: 34px;
+        margin-bottom: 12px;
+    }
+
+    .skeleton-text {
+        width: 220px;
+        height: 16px;
+    }
+
+    .skeleton-btn {
+        width: 130px;
+        height: 42px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.08);
+    }
+
+    .skeleton-avatar {
+        width: 90px;
+        height: 90px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.08);
+    }
+
+    .skeleton-name {
+        width: 180px;
+        height: 26px;
+        margin-bottom: 12px;
+    }
+
+    .skeleton-email {
+        width: 240px;
+        height: 16px;
+    }
+
+    .skeleton-stat {
+        padding: 20px;
+        border-radius: 18px;
+    }
+
+    .skeleton-stat-label {
+        width: 120px;
+        height: 14px;
+        margin-bottom: 14px;
+    }
+
+    .skeleton-stat-value {
+        width: 80%;
+        height: 22px;
+    }
+
+    .skeleton-watchlist-title {
+        width: 180px;
+        height: 28px;
+    }
+
+    .skeleton-movie-card {
+        overflow: hidden;
+    }
+
+    .skeleton-poster {
+        width: 100%;
+        aspect-ratio: 2 / 3;
+        border-radius: 16px;
+    }
+
+    .skeleton-movie-title {
+        width: 80%;
+        height: 20px;
+        margin: 14px 0 12px;
+    }
+
+    .skeleton-meta {
+        width: 60px;
+        height: 14px;
+
+        &.small {
+            width: 80px;
+        }
+    }
+}
+
+@media (max-width: 768px) {
+    .profile-skeleton {
+        .skeleton-title {
+            width: 200px;
+            height: 28px;
+        }
+
+        .skeleton-email {
+            width: 180px;
+        }
+
+        .skeleton-btn {
+            width: 100px;
+            height: 38px;
+        }
+    }
+}
