@@ -1,6 +1,8 @@
 import { Link, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 
 import '../../styles/home.scss';
+import isAuthenticated from '../../utils/checkAuth.js';
 import Nav from '../../components/Navbar.jsx';
 
 function Home() {
@@ -8,6 +10,16 @@ function Home() {
 	const displayContact = () => {
 		navigate('/contact');
 	};
+
+	const saveContent = () => {
+		if (!isAuthenticated()) {
+			toast.error('Please Login to save Content', {
+				position: 'top-right',
+				autoClose: 5000,
+				theme: 'dark',
+			});
+		}
+	}
 
 	return (
 		<>
@@ -44,7 +56,7 @@ function Home() {
 							<button className="btn-hero" id="heroWatchNow">
 								<i className="bi bi-play-fill"></i> Watch Now
 							</button>
-							<button className="btn-hero-outline" id="heroWatchLater">
+							<button className="btn-hero-outline" onClick={() => saveContent()}>
 								<i className="bi bi-clock"></i> Watch Later
 							</button>
 						</div>
@@ -59,7 +71,29 @@ function Home() {
 						View all <i className="bi bi-arrow-right-short"></i>
 					</Link>
 				</div>
-				<div className="row g-4" id="moviesGrid"></div>
+				<div className="row g-4">
+					<div className="col-6 col-sm-6 col-md-4 col-lg-3">
+						<div className="movie-card">
+							<img src="https://assets-in.bmscdn.com/iedb/movies/images/mobile/thumbnail/xlarge/tumbbad-et00079092-1726221741.jpg" className="card-img-top" alt="${item.title}" loading="lazy" />
+							<div className="card-body">
+								<h5 className="card-title text-truncate">Name</h5>
+								<div className="card-info-row">
+									<div className="rating-hd-group d-flex gap-3 w-100 justify-content-between">
+										<div>
+											<span className="hd-icon me-2">HD</span>
+											<span className="card-year">2020</span>
+										</div>
+										8.9
+									</div>
+								</div>
+								<div className="card-buttons">
+									<button className="btn-watch-sm watch-now-btn" ><i className="bi bi-play-fill"></i> Watch</button>
+									<button className="btn-later-sm watch-later-btn" onClick={() => saveContent()} ><i className="bi bi-bookmark"></i> <span className="d-none d-sm-block align-items-center">Later</span></button>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
 			</div>
 
 			<div className="container py-3">

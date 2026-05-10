@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
 import ProfileCards from '../../components/ProfileCards.jsx';
 import ProfileLoader from '../../components/Loader/profileLoader.jsx';
 import displayProfile from './fetchDashboard.js'
+import logout from '../../utils/logout.js';
 
 import '../../styles/account.scss';
 
@@ -17,6 +18,7 @@ function Dashboard() {
 	const [status, setStatus] = useState('')
 	const [validTill, setValidTill] = useState('');
 	const [savedCount, setSavedCount] = useState(0);
+	const [emptyState, setEmptyState] = useState(false);
 
 	const setSubscription = (data) => {
 		if (data.isSuperAdmin) {
@@ -53,6 +55,10 @@ function Dashboard() {
 			setSavedCount(isSuccess.contentCount);
 
 			console.log(isSuccess)
+
+			if (!isSuccess.contentCount) {
+				setEmptyState(true);
+			}
 		}
 
 		setLoading(false);
@@ -74,9 +80,9 @@ function Dashboard() {
 						</h1>
 						<p>Your premium hub — watchlist & profile</p>
 					</div>
-					<div className="logout-btn" id="signOutBtn">
+					<button className="logout-btn" onClick={() => logout(toast)}>
 						<i className="bi bi-box-arrow-right"></i> <span>Logout</span>
-					</div>
+					</button>
 				</div>
 
 				<div className="profile-card-modern">
@@ -150,17 +156,17 @@ function Dashboard() {
 				</div>
 
 				<div className="movies-grid">
-					<ProfileCards />
+					<ProfileCards display={emptyState} />
 				</div>
 
-				{/* <div className="empty-watchlist">
+				<div className="empty-watchlist" style={{ display: emptyState ? 'block' : 'none' }}>
 					<i className="bi bi-bookmark-heart"></i>
 					<p>Your watchlist feels empty</p>
 					<p>Add movies & series you love to watch later</p>
-					<button className="browse-button" id="emptyBrowseBtn">
+					<Link to='/home' className="browse-button">
 						Browse collections
-					</button>
-				</div> */}
+					</Link>
+				</div>
 
 			</main>
 
