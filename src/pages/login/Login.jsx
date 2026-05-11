@@ -61,7 +61,7 @@ function Login() {
 			const isLogged = await googleResponse(response, toast);
 
 			if (isLogged) {
-				navigate('/dashboard', { replace: true });
+				navigate('/account', { replace: true });
 			}
 		},
 		onError: (err) => {

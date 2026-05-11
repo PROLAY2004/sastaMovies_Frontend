@@ -24,7 +24,7 @@ function Home() {
 		if (isSuccess) {
 			setLoading(false);
 			setRandomContent(isSuccess.randomContent);
-			console.log(isSuccess);
+			// console.log(isSuccess);
 		}
 	}
 
@@ -48,7 +48,7 @@ function Home() {
 			<HomeLoader loading={loading} />
 
 			<main style={{ display: loading ? 'none' : 'block' }}>
-				<HeroSection randomContent={randomContent} saveContent={saveContent} />
+				<HeroSection randomContent={randomContent} />
 
 				<div className="container py-3">
 					<div className="section-header">

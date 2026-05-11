@@ -1,17 +1,50 @@
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+
+import setContent from "../pages/home/setContent.js";
 import isAuthenticated from "../utils/checkAuth.js";
+import getUser from "../utils/fetchUserDetails.js";
 
 function HeroSection(randomContent) {
+    const navigate = useNavigate();
+    const [loading, setLoading] = useState(false);
+    const [btnDisplay, setBtnDisplay] = useState(true);
 
-    const saveContent = () => {
-            if (!isAuthenticated()) {
-                toast.error('Please Login to save Content', {
-                    position: 'top-right',
-                    autoClose: 5000,
-                    theme: 'dark',
-                });
+    const userFetch = async () => {
+        if (isAuthenticated()) {
+            const userDetails = await getUser(navigate, toast);
+
+            if (userDetails.user.savedContents?.includes(randomContent.randomContent?._id)) {
+                setBtnDisplay(false);
             }
         }
+    }
+
+    const handleSet = async (contentId) => {
+        setLoading(true);
+
+        if (!isAuthenticated()) {
+            toast.error('Please Login to save Content', {
+                position: 'top-right',
+                autoClose: 5000,
+                theme: 'dark',
+            });
+        }
+        else {
+            const isSuccess = await setContent(navigate, toast, contentId)
+
+            if (isSuccess) {
+                setBtnDisplay(!btnDisplay);
+            }
+        }
+
+        setLoading(false);
+    }
+
+    useEffect(() => {
+        userFetch();
+    }, [randomContent.randomContent?._id])
 
     return (
         <div className="hero-wrapper">
@@ -41,11 +74,39 @@ function HeroSection(randomContent) {
                     </div>
                     <div className="hero-buttons">
                         <button className="btn-hero" id="heroWatchNow">
-                            <i className="bi bi-play-fill"></i> Watch Now
+                            <i className="bi bi-play-fill fst-normal"> Watch Now</i>
                         </button>
-                        <button className="btn-hero-outline" onClick={() => saveContent()}>
-                            <i className="bi bi-clock"></i> Watch Later
-                        </button>
+                        {
+                            btnDisplay ? (
+                                <button className="btn-hero-outline d-flex gap-2" disabled={loading} onClick={() => handleSet(randomContent.randomContent?._id)}>
+                                    {loading ? (
+                                        <>
+                                            <div
+                                                className="spinner-border"
+                                                role="status"
+                                                style={{ width: '20px', height: '20px' }}></div>{' '}
+                                            Saving...
+                                        </>
+                                    ) : (
+                                        <i className="bi bi-clock fst-normal"> Watch Later</i>
+                                    )}
+                                </button>
+                            ) : (
+                                <button className="btn-hero-outline d-flex gap-2" disabled={loading} onClick={() => handleSet(randomContent.randomContent?._id)}>
+                                    {loading ? (
+                                        <>
+                                            <div
+                                                className="spinner-border"
+                                                role="status"
+                                                style={{ width: '20px', height: '20px' }}></div>{' '}
+                                            Removing...
+                                        </>
+                                    ) : (
+                                        <i className="bi bi-check-circle fst-normal"> Saved</i>
+                                    )}
+                                </button>
+                            )
+                        }
                     </div>
                 </div>
             </div>

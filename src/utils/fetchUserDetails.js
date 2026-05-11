@@ -1,14 +1,13 @@
-import Api from '../../api/Api.js';
-import configaration from '../../config/config.js';
+import apiInterceptor from '../api/interceptor.js';
 
-const api = new Api();
-
-export default async function displayHome(navigate, toast) {
+export default async function getUser(navigate, toast) {
 	try {
-		const access_token = localStorage.getItem('access_token') || '';
-		const response = await api.getApi(
-			`${configaration.BASE_URL}/user/home`,
-			access_token,
+		const response = await apiInterceptor(
+			navigate,
+			toast,
+			'GET',
+			`/user/me`,
+			{},
 		);
 
 		const result = await response.json();
