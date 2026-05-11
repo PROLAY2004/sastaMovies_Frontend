@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, replace } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
 import ProfileCards from '../../components/ProfileCards.jsx';
-import ProfileLoader from '../../components/Loader/profileLoader.jsx';
+import ProfileLoader from '../../components/Loader/ProfileLoader.jsx';
 import displayProfile from './fetchDashboard.js'
 import logout from '../../utils/logout.js';
 
@@ -51,17 +51,16 @@ function Dashboard() {
 			setEmail(isSuccess.userInfo.email);
 			setMemberSince(isSuccess.userSince);
 			setSubscription(isSuccess.userInfo);
-			setValidTill(isSuccess.validTill);
+			setValidTill(isSuccess.validTill ? isSuccess.validTill : "Lifetime");
 			setSavedCount(isSuccess.contentCount);
-
+			setLoading(false);
+			
 			console.log(isSuccess)
 
 			if (!isSuccess.contentCount) {
 				setEmptyState(true);
 			}
 		}
-
-		setLoading(false);
 	}
 
 	useEffect(() => {
@@ -80,7 +79,7 @@ function Dashboard() {
 						</h1>
 						<p>Your premium hub — watchlist & profile</p>
 					</div>
-					<button className="logout-btn" onClick={() => logout(toast)}>
+					<button className="logout-btn" onClick={() => { logout(toast); navigate('/login', { replace: true }); }}>
 						<i className="bi bi-box-arrow-right"></i> <span>Logout</span>
 					</button>
 				</div>
