@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import ProfileCards from '../../components/ProfileCards.jsx';
 import ProfileLoader from '../../components/Loader/ProfileLoader.jsx';
 import displayProfile from './fetchDashboard.js'
+import RemoveModal from '../../components/modals/RemoveModal.jsx';
 import logout from '../../utils/logout.js';
 
 import '../../styles/account.scss';
@@ -21,6 +22,7 @@ function Dashboard() {
 	const [savedCount, setSavedCount] = useState(0);
 	const [emptyState, setEmptyState] = useState(false);
 	const [savedContents, setSavedContents] = useState([]);
+	const [removeModalActive, setRemoveModalActive] = useState(false);
 
 	const setSubscription = (data) => {
 		if (data.isSuperAdmin) {
@@ -150,7 +152,7 @@ function Dashboard() {
 					<h3>
 						<i className="bi bi-bookmark-fill"></i> Watch later
 					</h3>
-					<button className="clear-all-btn" id="clearAllWatchlistBtn">
+					<button className="clear-all-btn" id="clearAllWatchlistBtn" onClick={() => setRemoveModalActive(true)}>
 						<i className="bi bi-trash3"></i> Clear all
 					</button>
 				</div>
@@ -177,6 +179,8 @@ function Dashboard() {
 					<p>© 2026 SastaMovies — All Rights Reserved. Stream the future.</p>
 				</div>
 			</footer>
+
+			<RemoveModal open={removeModalActive} onClose={() => setRemoveModalActive(false)} pageReload={setPageRefresh} />
 		</>
 	);
 }

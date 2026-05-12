@@ -1,0 +1,149 @@
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.02);
+    backdrop-filter: blur(10px);
+    z-index: 999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 1rem;
+    animation: fadeIn 0.25s ease;
+}
+
+.custom-modal {
+    width: 100%;
+    max-width: 430px;
+    background: rgba(20, 20, 20, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 1.7rem;
+    overflow: hidden;
+    box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.5),
+        0 0 0 1px rgba(255, 255, 255, 0.03);
+    animation: modalPop 0.28s ease;
+}
+
+.modal-header {
+    padding: 1.3rem 1.5rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    h3 {
+        margin: 0;
+        color: #fff;
+        font-size: 1.2rem;
+        font-weight: 700;
+    }
+
+    button {
+        border: none;
+        background: rgba(255, 255, 255, 0.08);
+        color: #fff;
+        width: 2rem;
+        height: 2rem;
+        border-radius: 50%;
+        cursor: pointer;
+        transition: 0.2s;
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: rotate(90deg);
+        }
+    }
+}
+
+.modal-body {
+    padding: 0 1.5rem 1.5rem;
+
+    p {
+        color: rgba(255, 255, 255, 0.7);
+        line-height: 1.6;
+        margin-bottom: 1.2rem;
+    }
+
+    input {
+        width: 100%;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        height: 3rem;
+        border-radius: 0.9rem;
+        padding: 0 1rem;
+        color: white;
+        outline: none;
+        transition: 0.2s;
+
+        &:focus {
+            border-color: #e50914;
+            box-shadow: 0 0 0 4px rgba(229, 9, 20, 0.15);
+        }
+    }
+}
+
+.modal-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.4rem;
+
+    button {
+        flex: 1;
+        height: 3rem;
+        border: none;
+        border-radius: 0.9rem;
+        cursor: pointer;
+        font-weight: 600;
+        transition: 0.25s;
+    }
+
+    .cancel-btn {
+        background: rgba(255, 255, 255, 0.08);
+        color: white;
+
+        &:hover {
+            background: rgba(255, 255, 255, 0.14);
+        }
+    }
+
+    .danger-btn {
+        background: #e50914;
+        color: white;
+
+        &:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(229, 9, 20, 0.35);
+        }
+    }
+
+    .save-btn {
+        background: linear-gradient(135deg, #e50914, #ff2d55);
+        color: white;
+
+        &:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(229, 9, 20, 0.35);
+        }
+    }
+}
+
+@keyframes modalPop {
+    from {
+        opacity: 0;
+        transform: scale(0.9) translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}

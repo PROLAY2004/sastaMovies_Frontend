@@ -1,14 +1,17 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 import setContent from '../pages/home/setContent.js'
 
 function ProfileCards(cardDetails) {
     const navigate = useNavigate();
+    const [loading, setLoading] = useState(false);
 
     const handleRemove = async (contentId) => {
+        setLoading(true);
         const isSuccess = await setContent(navigate, toast, contentId);
+        setLoading(false);
 
         if (isSuccess) {
             console.log('check')
@@ -23,7 +26,10 @@ function ProfileCards(cardDetails) {
             <div className="movie-poster-wrapper">
                 <img src={cardDetails.savedContent.posterUrl.vertical} className="movie-poster" loading="lazy" />
                 <div className="remove-icon-btn" onClick={() => handleRemove(cardDetails.savedContent._id)}>
-                    <i className="bi bi-x-lg"></i>
+                    {loading ? (<div
+                        className="spinner-border"
+                        role="status"
+                        style={{ width: '20px', height: '20px' }}></div>) : (<i className="bi bi-x-lg"></i>)}
                 </div>
             </div>
             <div className="movie-info">
