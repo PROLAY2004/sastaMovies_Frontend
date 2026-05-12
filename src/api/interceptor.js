@@ -80,7 +80,7 @@ export default async function apiInterceptor(
 				localStorage.setItem('refresh_token', result.data.refresh_token);
 			}
 
-			return apiInterceptor(navigate, toast, method, endpoint, (body = null));
+			return apiInterceptor(navigate, toast, method, endpoint, body );
 		}
 
 		return response;

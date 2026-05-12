@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import ProfileCards from '../../components/ProfileCards.jsx';
 import ProfileLoader from '../../components/Loader/ProfileLoader.jsx';
 import displayProfile from './fetchDashboard.js'
+import EditModal from '../../components/modals/EditProfileModal.jsx';
 import RemoveModal from '../../components/modals/RemoveModal.jsx';
 import logout from '../../utils/logout.js';
 
@@ -23,6 +24,7 @@ function Dashboard() {
 	const [emptyState, setEmptyState] = useState(false);
 	const [savedContents, setSavedContents] = useState([]);
 	const [removeModalActive, setRemoveModalActive] = useState(false);
+	const [editModalActive, setEditModalActive] = useState(false);
 
 	const setSubscription = (data) => {
 		if (data.isSuperAdmin) {
@@ -105,7 +107,7 @@ function Dashboard() {
 								</p>
 							</div>
 						</div>
-						<button className="edit-profile-action" id="editProfileBtnModern">
+						<button className="edit-profile-action" onClick={() => setEditModalActive(true)}>
 							<i className="bi bi-pencil-square"></i> Edit profile
 						</button>
 					</div>
@@ -180,6 +182,7 @@ function Dashboard() {
 				</div>
 			</footer>
 
+			<EditModal open={editModalActive} onClose={() => setEditModalActive(false)} userName={name} pageReload={setPageRefresh} />
 			<RemoveModal open={removeModalActive} onClose={() => setRemoveModalActive(false)} pageReload={setPageRefresh} />
 		</>
 	);
