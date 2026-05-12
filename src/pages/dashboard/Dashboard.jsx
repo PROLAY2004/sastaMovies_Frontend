@@ -11,6 +11,7 @@ import '../../styles/account.scss';
 
 function Dashboard() {
 	const navigate = useNavigate();
+	const [pageRefresh, setPageRefresh] = useState(0);
 	const [loading, setLoading] = useState(true);
 	const [name, setName] = useState('');
 	const [email, setEmail] = useState('');
@@ -19,6 +20,7 @@ function Dashboard() {
 	const [validTill, setValidTill] = useState('');
 	const [savedCount, setSavedCount] = useState(0);
 	const [emptyState, setEmptyState] = useState(false);
+	const [savedContents, setSavedContents] = useState([]);
 
 	const setSubscription = (data) => {
 		if (data.isSuperAdmin) {
@@ -53,9 +55,8 @@ function Dashboard() {
 			setSubscription(isSuccess.userInfo);
 			setValidTill(isSuccess.validTill ? isSuccess.validTill : "Lifetime");
 			setSavedCount(isSuccess.contentCount);
+			setSavedContents(isSuccess.userInfo.contentObjects)
 			setLoading(false);
-			
-			console.log(isSuccess)
 
 			if (!isSuccess.contentCount) {
 				setEmptyState(true);
@@ -65,7 +66,7 @@ function Dashboard() {
 
 	useEffect(() => {
 		handleDisplay();
-	}, [])
+	}, [pageRefresh])
 
 	return (
 		<>
@@ -155,7 +156,9 @@ function Dashboard() {
 				</div>
 
 				<div className="movies-grid">
-					<ProfileCards display={emptyState} />
+					{savedContents.map((savedContent) => (
+						<ProfileCards key={savedContent._id} display={emptyState} savedContent={savedContent} pageReload={setPageRefresh} />
+					))}
 				</div>
 
 				<div className="empty-watchlist" style={{ display: emptyState ? 'block' : 'none' }}>
