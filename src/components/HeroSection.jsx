@@ -6,7 +6,7 @@ import setContent from "../pages/home/setContent.js";
 import isAuthenticated from "../utils/checkAuth.js";
 import getUser from "../utils/fetchUserDetails.js";
 
-function HeroSection(randomContent) {
+function HeroSection({ randomContent, pageReload, refresh }) {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [btnDisplay, setBtnDisplay] = useState(true);
@@ -15,8 +15,11 @@ function HeroSection(randomContent) {
         if (isAuthenticated()) {
             const userDetails = await getUser(navigate, toast);
 
-            if (userDetails.user.savedContents?.includes(randomContent.randomContent?._id)) {
+            if (userDetails.user.savedContents?.includes(randomContent?._id)) {
                 setBtnDisplay(false);
+            }
+            else{
+                setBtnDisplay(true);
             }
         }
     }
@@ -36,6 +39,7 @@ function HeroSection(randomContent) {
 
             if (isSuccess) {
                 setBtnDisplay(!btnDisplay);
+                refresh((prev) => prev + 1)
             }
         }
 
@@ -44,13 +48,13 @@ function HeroSection(randomContent) {
 
     useEffect(() => {
         userFetch();
-    }, [randomContent.randomContent?._id])
+    }, [randomContent?._id, pageReload])
 
     return (
         <div className="hero-wrapper">
             <div className="hero-background">
                 <img
-                    src={randomContent.randomContent?.posterUrl?.horizontal}
+                    src={randomContent?.posterUrl?.horizontal}
                     alt="hero background"
                 />
             </div>
@@ -61,24 +65,24 @@ function HeroSection(randomContent) {
                         <i
                             className="bi bi-star-fill me-1"
                             style={{ fontSize: '0.65rem' }}></i>{' '}
-                        FEATURED {randomContent.randomContent?.contentType === 'movie' ? 'MOVIE' : 'SERIES'}
+                        FEATURED {randomContent?.contentType === 'movie' ? 'MOVIE' : 'SERIES'}
                     </div>
                     <h1 className="hero-title">
-                        {randomContent.randomContent?.title || 'Welcome to SastaMovies'}
+                        {randomContent?.title || 'Welcome to SastaMovies'}
                     </h1>
                     <p className="hero-desc">
-                        {randomContent.randomContent?.description || 'Your premium hub to stream the future.'}
+                        {randomContent?.description || 'Your premium hub to stream the future.'}
                     </p>
                     <div className="hero-meta">
-                        <span>{randomContent.randomContent?.release?.slice(-4) || 'Stream' }</span> • {randomContent.randomContent?.genre?.join(', ') || 'Chill'} • {randomContent.randomContent?.runtime || 'Repeat'}
+                        <span>{randomContent?.release?.slice(-4) || 'Stream'}</span> • {randomContent?.genre?.join(', ') || 'Chill'} • {randomContent?.runtime || 'Repeat'}
                     </div>
-                    <div className="hero-buttons">
+                    <div className="hero-buttons" style={{display : randomContent ? 'flex' : "none"}}>
                         <button className="btn-hero">
                             <i className="bi bi-play-fill fst-normal"> Watch Now</i>
                         </button>
                         {
                             btnDisplay ? (
-                                <button className="btn-hero-outline d-flex gap-2" disabled={loading} onClick={() => handleSet(randomContent.randomContent?._id)}>
+                                <button className="btn-hero-outline d-flex gap-2" disabled={loading} onClick={() => handleSet(randomContent?._id)}>
                                     {loading ? (
                                         <>
                                             <div
@@ -92,7 +96,7 @@ function HeroSection(randomContent) {
                                     )}
                                 </button>
                             ) : (
-                                <button className="btn-hero-outline d-flex gap-2" disabled={loading} onClick={() => handleSet(randomContent.randomContent?._id)}>
+                                <button className="btn-hero-outline d-flex gap-2" disabled={loading} onClick={() => handleSet(randomContent?._id)}>
                                     {loading ? (
                                         <>
                                             <div

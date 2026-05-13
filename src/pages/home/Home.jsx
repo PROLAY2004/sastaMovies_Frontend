@@ -7,16 +7,16 @@ import isAuthenticated from '../../utils/checkAuth.js';
 import Nav from '../../components/Navbar.jsx';
 import HomeLoader from '../../components/Loader/HomeLoader.jsx';
 import HeroSection from '../../components/HeroSection.jsx';
+import MovieCards from '../../components/MovieCards.jsx';
 import displayHome from './fetchHome.js';
 
 function Home() {
 	const navigate = useNavigate();
 	const [loading, setLoading] = useState(true);
 	const [randomContent, setRandomContent] = useState({});
-
-	const displayContact = () => {
-		navigate('/contact');
-	};
+	const [movies, setMovies] = useState([]);
+	const [pageReload, setPageReload] = useState(0);
+	const [moviesEmptyState, setMoviesEmptyState] = useState(true);
 
 	const handleDisplay = async () => {
 		const isSuccess = await displayHome(navigate, toast);
@@ -24,13 +24,17 @@ function Home() {
 		if (isSuccess) {
 			setLoading(false);
 			setRandomContent(isSuccess.randomContent);
-			// console.log(isSuccess);
+			setMovies(isSuccess.movies);
+
+			if (isSuccess.movies.length) {
+				setMoviesEmptyState(false);
+			}
 		}
 	}
 
 	useEffect(() => {
 		handleDisplay();
-	}, [])
+	}, [pageReload])
 
 	const saveContent = () => {
 		if (!isAuthenticated()) {
@@ -48,7 +52,7 @@ function Home() {
 			<HomeLoader loading={loading} />
 
 			<main style={{ display: loading ? 'none' : 'block' }}>
-				<HeroSection randomContent={randomContent} />
+				<HeroSection randomContent={randomContent} pageReload={pageReload} refresh={setPageReload} />
 
 				<div className="container py-3">
 					<div className="section-header">
@@ -58,29 +62,31 @@ function Home() {
 						</Link>
 					</div>
 					<div className="row g-4">
-						<div className="col-6 col-sm-6 col-md-4 col-lg-3">
-							<div className="movie-card">
-								<img src="https://assets-in.bmscdn.com/iedb/movies/images/mobile/thumbnail/xlarge/tumbbad-et00079092-1726221741.jpg" className="card-img-top" alt="${item.title}" loading="lazy" />
-								<div className="card-body">
-									<h5 className="card-title text-truncate">Name</h5>
-									<div className="card-info-row">
-										<div className="rating-hd-group d-flex gap-3 w-100 justify-content-between">
-											<div>
-												<span className="hd-icon me-2">HD</span>
-												<span className="card-year">2020</span>
-											</div>
-											8.9
-										</div>
-									</div>
-									<div className="card-buttons">
-										<button className="btn-watch-sm watch-now-btn" ><i className="bi bi-play-fill"></i> Watch</button>
-										<button className="btn-later-sm watch-later-btn" onClick={() => saveContent()} ><i className="bi bi-bookmark"></i> <span className="d-none d-sm-block align-items-center">Later</span></button>
-									</div>
-								</div>
+						{movies.map((movie) => (
+							<MovieCards key={movie._id} movie={movie} pageReload={pageReload} refresh={setPageReload} />
+						))}
+
+						<div className="movie-card text-center py-3" style={{ display: moviesEmptyState ? 'block' : 'none' }}>
+							<div className="mb-4">
+								<i
+									className="bi bi-film"
+									style={{
+										fontSize: '4rem',
+										color: 'rgba(245,184,27,0.7)',
+									}}></i>
 							</div>
+
+							<h3 className="fw-bold mb-3">
+								No Movies Available
+							</h3>
+
+							<p className="text-secondary mb-4">
+								Movies are not available right now. Please check again later.
+							</p>
 						</div>
 					</div>
 				</div>
+
 
 				<div className="container py-3">
 					<div className="section-header">
@@ -112,7 +118,7 @@ function Home() {
 							</div>
 							<div className="col-md-4 text-md-end mt-3 mt-md-0">
 								<button
-									onClick={displayContact}
+									onClick={() => navigate('/contact')}
 									className="btn-login"
 									id="ctaBtn"
 									style={{ background: '#F5B81B' }}>
