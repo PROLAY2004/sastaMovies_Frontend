@@ -58,11 +58,11 @@ function Dashboard() {
 			setMemberSince(isSuccess.userSince);
 			setSubscription(isSuccess.userInfo);
 			setValidTill(isSuccess.validTill ? isSuccess.validTill : "Lifetime");
-			setSavedCount(isSuccess.contentCount);
+			setSavedCount(isSuccess.userInfo.contentObjects.length);
 			setSavedContents(isSuccess.userInfo.contentObjects)
 			setLoading(false);
 
-			if (!isSuccess.contentCount) {
+			if (!isSuccess.userInfo.contentObjects.length) {
 				setEmptyState(true);
 			}
 		}

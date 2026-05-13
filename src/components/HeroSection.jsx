@@ -63,17 +63,17 @@ function HeroSection(randomContent) {
                             style={{ fontSize: '0.65rem' }}></i>{' '}
                         FEATURED {randomContent.randomContent?.contentType === 'movie' ? 'MOVIE' : 'SERIES'}
                     </div>
-                    <h1 className="hero-title" id="heroTitle">
-                        {randomContent.randomContent?.title}
+                    <h1 className="hero-title">
+                        {randomContent.randomContent?.title || 'Welcome to SastaMovies'}
                     </h1>
-                    <p className="hero-desc" id="heroDesc">
-                        {randomContent.randomContent?.description}
+                    <p className="hero-desc">
+                        {randomContent.randomContent?.description || 'Your premium hub to stream the future.'}
                     </p>
-                    <div className="hero-meta" id="heroMeta">
-                        <span>{randomContent.randomContent?.release?.slice(-4)}</span> • {randomContent.randomContent?.genre?.join(', ')} • {randomContent.randomContent?.runtime}
+                    <div className="hero-meta">
+                        <span>{randomContent.randomContent?.release?.slice(-4) || 'Stream' }</span> • {randomContent.randomContent?.genre?.join(', ') || 'Chill'} • {randomContent.randomContent?.runtime || 'Repeat'}
                     </div>
                     <div className="hero-buttons">
-                        <button className="btn-hero" id="heroWatchNow">
+                        <button className="btn-hero">
                             <i className="bi bi-play-fill fst-normal"> Watch Now</i>
                         </button>
                         {
