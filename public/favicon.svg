@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 64">
+
+  <defs>
+
+    <!-- TV BODY -->
+    <linearGradient id="tvBody" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#18181b"></stop>
+      <stop offset="100%" stop-color="#020617"></stop>
+    </linearGradient>
+
+    <!-- MULTICOLOR SCREEN -->
+    <linearGradient id="screen" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fde047"></stop>
+      <stop offset="25%" stop-color="#facc15"></stop>
+      <stop offset="50%" stop-color="#22c55e"></stop>
+      <stop offset="75%" stop-color="#06b6d4"></stop>
+      <stop offset="100%" stop-color="#a855f7"></stop>
+    </linearGradient>
+
+    <!-- CRT STATIC -->
+    <pattern id="noise" width="3" height="3" patternUnits="userSpaceOnUse">
+      <rect width="3" height="3" fill="transparent"></rect>
+      <rect y="1" width="3" height="0.35" fill="white" opacity="0.12"></rect>
+      <rect y="2" width="3" height="0.25" fill="black" opacity="0.08"></rect>
+    </pattern>
+
+    <!-- SCREEN GLOW -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="1.8" result="blur"></feGaussianBlur>
+      <feMerge>
+        <feMergeNode in="blur"></feMergeNode>
+        <feMergeNode in="SourceGraphic"></feMergeNode>
+      </feMerge>
+    </filter>
+
+    <!-- TEXT GLOW -->
+    <filter id="textGlow">
+      <feGaussianBlur stdDeviation="0.35" result="blur"></feGaussianBlur>
+      <feMerge>
+        <feMergeNode in="blur"></feMergeNode>
+        <feMergeNode in="SourceGraphic"></feMergeNode>
+      </feMerge>
+    </filter>
+
+  </defs>
+
+  <!-- TV BODY -->
+  <rect x="4" y="8" width="64" height="48" rx="14" fill="url(#tvBody)"></rect>
+
+  <!-- SCREEN -->
+  <rect x="10" y="14" width="52" height="36" rx="7" fill="url(#screen)" filter="url(#glow)"></rect>
+
+  <!-- STATIC -->
+  <rect x="10" y="14" width="52" height="36" rx="7" fill="url(#noise)" opacity="0.42"></rect>
+
+  <!-- BIG SM -->
+  <text x="36" y="35" text-anchor="middle" dominant-baseline="middle" font-family="Verdana, Arial, sans-serif" font-size="20" font-weight="900" letter-spacing="0.8" fill="#111827" stroke="white" stroke-width="0.7" paint-order="stroke fill" filter="url(#textGlow)">
+    SM
+  </text>
+
+</svg>
