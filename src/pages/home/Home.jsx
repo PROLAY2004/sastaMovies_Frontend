@@ -8,6 +8,7 @@ import Nav from '../../components/Navbar.jsx';
 import HomeLoader from '../../components/Loader/HomeLoader.jsx';
 import HeroSection from '../../components/HeroSection.jsx';
 import MovieCards from '../../components/MovieCards.jsx';
+import SeriesCards from '../../components/SeriesCards.jsx';
 import displayHome from './fetchHome.js';
 
 function Home() {
@@ -15,8 +16,10 @@ function Home() {
 	const [loading, setLoading] = useState(true);
 	const [randomContent, setRandomContent] = useState({});
 	const [movies, setMovies] = useState([]);
+	const [series, setSeries] = useState([]);
 	const [pageReload, setPageReload] = useState(0);
 	const [moviesEmptyState, setMoviesEmptyState] = useState(true);
+	const [seriesEmptyState, setSeriesEmptyState] = useState(true);
 
 	const handleDisplay = async () => {
 		const isSuccess = await displayHome(navigate, toast);
@@ -25,9 +28,14 @@ function Home() {
 			setLoading(false);
 			setRandomContent(isSuccess.randomContent);
 			setMovies(isSuccess.movies);
+			setSeries(isSuccess.series);
 
 			if (isSuccess.movies.length) {
 				setMoviesEmptyState(false);
+			}
+
+			if (isSuccess.series.length) {
+				setSeriesEmptyState(false);
 			}
 		}
 	}
@@ -95,7 +103,30 @@ function Home() {
 							View all <i className="bi bi-arrow-right-short"></i>
 						</Link>
 					</div>
-					<div className="row g-4" id="seriesGrid"></div>
+					<div className="row g-4">
+						{series.map((series) => (
+							<SeriesCards key={series._id} series={series} pageReload={pageReload} refresh={setPageReload} />
+						))}
+
+						<div className="movie-card text-center py-3" style={{ display: seriesEmptyState ? 'block' : 'none' }}>
+							<div className="mb-4">
+								<i
+									className="bi bi-film"
+									style={{
+										fontSize: '4rem',
+										color: 'rgba(245,184,27,0.7)',
+									}}></i>
+							</div>
+
+							<h3 className="fw-bold mb-3">
+								No Series Available
+							</h3>
+
+							<p className="text-secondary mb-4">
+								Series are not available right now. Please check again later.
+							</p>
+						</div>
+					</div>
 				</div>
 
 				<div className="container my-5">

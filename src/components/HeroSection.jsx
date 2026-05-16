@@ -11,6 +11,8 @@ function HeroSection({ randomContent, pageReload, refresh }) {
     const [loading, setLoading] = useState(false);
     const [btnDisplay, setBtnDisplay] = useState(true);
 
+    console.log(randomContent)
+
     const userFetch = async () => {
         if (isAuthenticated()) {
             const userDetails = await getUser(navigate, toast);
@@ -74,7 +76,7 @@ function HeroSection({ randomContent, pageReload, refresh }) {
                         {randomContent?.description || 'Your premium hub to stream the future.'}
                     </p>
                     <div className="hero-meta">
-                        <span>{randomContent?.release?.slice(-4) || 'Stream'}</span> • {randomContent?.genre?.join(', ') || 'Chill'} • {randomContent?.runtime || 'Repeat'}
+                        <span>{randomContent?.release?.slice(-4) || 'Stream'}</span> • {randomContent?.genre?.join(', ') || 'Chill'} • {randomContent?.runtime !== 'N/A' ? randomContent?.runtime : randomContent?.contentIds?.length + " Seasons"  || 'Repeat'}
                     </div>
                     <div className="hero-buttons" style={{display : randomContent ? 'flex' : "none"}}>
                         <button className="btn-hero">
