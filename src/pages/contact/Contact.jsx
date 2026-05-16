@@ -58,7 +58,6 @@ function Home() {
 										<label className="form-label">Message</label>
 										<textarea
 											className="contact-form-control"
-											id="messageText"
 											rows="5"
 											placeholder="Tell us how we can help you..."
 											required></textarea>
@@ -72,13 +71,14 @@ function Home() {
 												id="newsletterCheck"
 												style={{
 													backgroundColor: 'transparent',
-													borderColor: 'var(--color-primary)',
+													borderColor: '#f5b81b',
 												}}
 											/>
 											<label
 												className="form-check-label"
+												htmlFor='newsletterCheck'
 												style={{
-													color: 'var(--color-gray-light)',
+													color: '#b0b0b0',
 													fontSize: '0.8rem',
 												}}>
 												Subscribe to newsletter for updates and exclusive offers

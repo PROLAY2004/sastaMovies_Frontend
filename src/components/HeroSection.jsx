@@ -11,8 +11,6 @@ function HeroSection({ randomContent, pageReload, refresh }) {
     const [loading, setLoading] = useState(false);
     const [btnDisplay, setBtnDisplay] = useState(true);
 
-    console.log(randomContent)
-
     const userFetch = async () => {
         if (isAuthenticated()) {
             const userDetails = await getUser(navigate, toast);

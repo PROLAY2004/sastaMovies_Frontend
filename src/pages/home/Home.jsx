@@ -14,6 +14,7 @@ import displayHome from './fetchHome.js';
 function Home() {
 	const navigate = useNavigate();
 	const [loading, setLoading] = useState(true);
+	const [displaySubscribe, setDisplaySubscribe] = useState(true);
 	const [randomContent, setRandomContent] = useState({});
 	const [movies, setMovies] = useState([]);
 	const [series, setSeries] = useState([]);
@@ -42,6 +43,10 @@ function Home() {
 
 	useEffect(() => {
 		handleDisplay();
+
+		if(isAuthenticated()){
+			setDisplaySubscribe(false);
+		}
 	}, [pageReload])
 
 	const saveContent = () => {
@@ -129,7 +134,7 @@ function Home() {
 					</div>
 				</div>
 
-				<div className="container my-5">
+				<div className="container my-5" style={{ display: displaySubscribe ? 'block' : 'none'}}>
 					<div
 						className="p-4 rounded-4"
 						style={{
