@@ -66,7 +66,7 @@ function SeriesCards(cardDetails) {
                         </div>
                     </div>
                     <div className="card-buttons">
-                        <button className="btn-watch-sm watch-now-btn" ><i className="bi bi-play-fill"></i> Watch</button>
+                        <button className="btn-watch-sm watch-now-btn" onClick={() => navigate(`/player/${cardDetails.series?._id}`)} ><i className="bi bi-play-fill"></i> Watch</button>
 
                         {
                             btnDisplay ? (

@@ -10,7 +10,7 @@ import Series from '../pages/series/Series.jsx';
 import Contact from '../pages/contact/Contact.jsx';
 import Login from '../pages/login/Login.jsx';
 import Dashboard from '../pages/dashboard/Dashboard.jsx';
-import SeriesPlayer from '../pages/seriesPlayer/seriesPlayer.jsx';
+import ContentPlayer from '../pages/seriesPlayer/ContentPlayer.jsx';
 
 const router = createBrowserRouter([
 	{
@@ -34,9 +34,9 @@ const router = createBrowserRouter([
 		element: <Contact />,
 	},
 	{
-		path: '/series-player',
+		path: '/player/:contentId',
 		element: (
-				<seriesPlayer />
+			<ContentPlayer />
 		),
 	},
 	{

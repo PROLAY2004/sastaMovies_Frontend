@@ -24,6 +24,7 @@ function HeroSection({ randomContent, pageReload, refresh }) {
         }
     }
 
+
     const handleSet = async (contentId) => {
         setLoading(true);
 
@@ -77,7 +78,7 @@ function HeroSection({ randomContent, pageReload, refresh }) {
                         <span>{randomContent?.release?.slice(-4) || 'Stream'}</span> • {randomContent?.genre?.join(', ') || 'Chill'} • {randomContent?.runtime !== 'N/A' ? randomContent?.runtime : randomContent?.contentIds?.length + " Seasons"  || 'Repeat'}
                     </div>
                     <div className="hero-buttons" style={{display : randomContent ? 'flex' : "none"}}>
-                        <button className="btn-hero">
+                        <button className="btn-hero" onClick={() => navigate(`/player/${randomContent?._id}`)}>
                             <i className="bi bi-play-fill fst-normal"> Watch Now</i>
                         </button>
                         {

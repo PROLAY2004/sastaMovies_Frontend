@@ -1,7 +1,50 @@
+@import './common/root';
+
 .player-page {
-    background: var(--primary-bg);
+    background: $color-black;
+    padding-top: 50px;
     min-height: 100vh;
-    color: var(--primary-text);
+    color: $color-white;
+}
+
+.player-navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 999;
+    background: $gradient-nav;
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(245, 184, 27, 0.08);
+}
+
+.player-nav-container {
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 1rem 2rem;
+    display: flex;
+    align-items: center;
+}
+
+.logo-text {
+    font-size: $font-2xl;
+    font-weight: $font-extrabold;
+    color: $color-primary;
+    margin: 0;
+    letter-spacing: -0.5px;
+}
+
+.logo-text span {
+    color: $color-white;
+}
+
+.player-container {
+    width: 100%;
+    max-width: 1400px;
+    padding-left: 2rem;
+    padding-right: 2rem;
+    margin: 0 auto;
 }
 
 .player-layout {
@@ -22,13 +65,15 @@
 
 .video-player {
     width: 100%;
-    height: 72vh;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    display: block;
     border: none;
 }
 
 .series-content-box,
 .imdb-banner-card {
-    background: rgba(16, 16, 16, 0.95);
+    background: rgba(10, 10, 10, 0.96);
     border: 1px solid rgba(245, 184, 27, 0.14);
     border-radius: 22px;
     backdrop-filter: blur(10px);
@@ -42,18 +87,18 @@
 .series-title {
     font-size: 2rem;
     font-weight: 700;
-    color: var(--primary-text);
+    color: $color-white; 
     letter-spacing: -0.4px;
 }
 
 .series-subtitle {
-    color: var(--secondary-text);
+    color: $color-gray-light; 
     font-size: 0.95rem;
 }
 
 .series-description,
 .banner-description {
-    color: var(--secondary-text);
+    color: $color-gray-light ;
     line-height: 1.7;
     font-size: 0.96rem;
 }
@@ -62,22 +107,26 @@
     display: block;
     font-size: 0.85rem;
     margin-bottom: 0.45rem;
-    color: var(--secondary-text);
+    color: $color-gray-light
 }
 
 .season-select {
-    background: rgba(255, 255, 255, 0.06);
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    cursor: pointer;
+    background: $color-black-lighter;
     border: 1px solid rgba(245, 184, 27, 0.2);
-    color: var(--primary-text);
-    padding: 0.75rem 1rem;
-    border-radius: 12px;
+    color: $color-white; 
+    padding: 0.82rem 1rem;
+    border-radius: $radius-md;
     outline: none;
     min-width: 160px;
     transition: 0.3s ease;
 }
 
 .season-select:focus {
-    border-color: #f5b81b;
+    border-color: $color-primary;
     box-shadow: 0 0 0 3px rgba(245, 184, 27, 0.12);
 }
 
@@ -97,7 +146,7 @@
     border-radius: 14px;
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.06);
-    color: var(--primary-text);
+    color: $color-white ;
     font-weight: 600;
     transition: 0.3s ease;
 }
@@ -108,9 +157,9 @@
 }
 
 .episode-btn.active {
-    background: #f5b81b;
+    background: $color-primary;
     color: #111;
-    border-color: #f5b81b;
+    border-color: $color-primary;
     box-shadow: 0 10px 25px rgba(245, 184, 27, 0.3);
 }
 
@@ -120,48 +169,63 @@
     top: 100px;
 }
 
-.banner-image {
+.movie-poster {
     width: 100%;
-    height: 270px;
+    // aspect-ratio: 9 / 16;
+    height: auto;
+    max-height: 720px;
     object-fit: cover;
+    border-radius: $radius-lg;
+    margin-bottom: 1.5rem;
+    border: 1px solid rgba(245, 184, 27, 0.14);
 }
 
-.banner-content {
+.info-section {
     padding: 1.5rem;
 }
 
-.imdb-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-    background: #f5c518;
-    color: #111;
-    padding: 0.55rem 1rem;
-    border-radius: 999px;
-    font-weight: 700;
-    font-size: 0.9rem;
-    margin-bottom: 1rem;
-}
-
-.banner-title {
-    font-size: 1.9rem;
-    font-weight: 700;
-    margin-bottom: 0.8rem;
-}
-
-.series-meta {
+.movie-meta {
     display: flex;
-    gap: 0.75rem;
+    justify-content: space-between;
+    gap: 0.8rem;
+    margin-bottom: 1.5rem;
     flex-wrap: wrap;
-    margin-bottom: 1rem;
 }
 
-.series-meta span {
+.meta-item {
+    flex: 1;
+    min-width: 90px;
     background: rgba(255, 255, 255, 0.05);
-    padding: 0.45rem 0.85rem;
-    border-radius: 999px;
-    font-size: 0.82rem;
-    color: var(--secondary-text);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 0.9rem 0.7rem;
+    border-radius: 14px;
+    text-align: center;
+    color: $color-gray-light;
+    font-size: 0.88rem;
+}
+
+.meta-item i {
+    display: block;
+    font-size: 1.2rem;
+    margin-bottom: 0.45rem;
+    color: #f5b81b;
+}
+
+.movie-details-grid {
+    display: grid;
+    grid-template-columns: 110px 1fr;
+    gap: 0.9rem 1rem;
+}
+
+.detail-label {
+    font-weight: 700;
+    color: $color-white
+}
+
+.detail-value {
+    color: $color-gray-light;
+    line-height: 1.6;
+    word-break: break-word;
 }
 
 .watch-btn {
@@ -169,7 +233,7 @@
     padding: 0.95rem 1rem;
     border: none;
     border-radius: 14px;
-    background: #f5b81b;
+    background: $color-primary;
     color: #111;
     font-weight: 700;
     font-size: 1rem;
@@ -179,6 +243,25 @@
 .watch-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 10px 25px rgba(245, 184, 27, 0.3);
+}
+
+@media (min-width: 1800px) {
+    .player-layout {
+        grid-template-columns: 2.1fr 0.8fr;
+        gap: 2rem;
+    }
+
+    .series-title {
+        font-size: 2.5rem;
+    }
+
+    .video-player-wrapper {
+        border-radius: 28px;
+    }
+
+    .video-player {
+        max-height: 78vh;
+    }
 }
 
 @media (max-width: 992px) {
@@ -192,13 +275,15 @@
     }
 
     .video-player {
-        height: 55vh;
+        aspect-ratio: 16 / 9;
+        height: auto;
     }
 }
 
 @media (max-width: 576px) {
     .video-player {
-        height: 250px;
+        aspect-ratio: 16 / 9;
+        height: auto;
     }
 
     .series-content-box,
