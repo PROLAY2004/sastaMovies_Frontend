@@ -22,7 +22,7 @@ function ProfileCards(cardDetails) {
     }
 
     return (
-        <div className="movie-card" style={{ display: cardDetails.display ? 'none' : 'block' }}>
+        <div className="movie-card" style={{ display: cardDetails.display ? 'none' : 'block' }} onClick={() => navigate(`/player/${cardDetails.savedContent._id}`)}>
             <div className="movie-poster-wrapper">
                 <img src={cardDetails.savedContent.posterUrl.vertical} className="movie-poster" loading="lazy" />
                 <div className="remove-icon-btn" onClick={() => handleRemove(cardDetails.savedContent._id)}>

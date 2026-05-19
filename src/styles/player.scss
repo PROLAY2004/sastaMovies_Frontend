@@ -22,7 +22,7 @@
     width: 100%;
     max-width: 1400px;
     margin: 0 auto;
-    padding: 1rem 2rem;
+    padding: 1rem 15px;
     display: flex;
     align-items: center;
 }
@@ -115,14 +115,24 @@
     -webkit-appearance: none;
     -moz-appearance: none;
     cursor: pointer;
+
     background: $color-black-lighter;
     border: 1px solid rgba(245, 184, 27, 0.2);
-    color: $color-white; 
+    color: $color-white;
+
     padding: 0.82rem 1rem;
+    padding-right: 2.8rem;
+
     border-radius: $radius-md;
     outline: none;
     min-width: 160px;
-    transition: 0.3s ease;
+
+    transition: $transition-normal ease;
+
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%23f5b81b' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='3 5 7 9 11 5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 14px;
 }
 
 .season-select:focus {
@@ -172,10 +182,10 @@
 .movie-poster {
     width: 100%;
     // aspect-ratio: 9 / 16;
-    height: auto;
+    // height: auto;
     max-height: 720px;
     object-fit: cover;
-    border-radius: $radius-lg;
+    // border-radius: $radius-lg;
     margin-bottom: 1.5rem;
     border: 1px solid rgba(245, 184, 27, 0.14);
 }
@@ -188,7 +198,7 @@
     display: flex;
     justify-content: space-between;
     gap: 0.8rem;
-    margin-bottom: 1.5rem;
+    // margin-bottom: 1.5rem;
     flex-wrap: wrap;
 }
 

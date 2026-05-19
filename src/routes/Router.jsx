@@ -10,7 +10,7 @@ import Series from '../pages/series/Series.jsx';
 import Contact from '../pages/contact/Contact.jsx';
 import Login from '../pages/login/Login.jsx';
 import Dashboard from '../pages/dashboard/Dashboard.jsx';
-import ContentPlayer from '../pages/seriesPlayer/ContentPlayer.jsx';
+import ContentPlayer from '../pages/player/ContentPlayer.jsx';
 
 const router = createBrowserRouter([
 	{

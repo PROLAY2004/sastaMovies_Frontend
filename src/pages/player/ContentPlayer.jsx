@@ -1,11 +1,30 @@
-import { useState } from 'react';
-import { useParams } from "react-router-dom";
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from "react-router-dom";
+import { toast } from 'react-toastify';
+
 import '../../styles/player.scss';
+import displayPlayer from './fetchContent.js';
+import PlayerLoader from '../../components/PlayerLoader.jsx'
 
 function ContentPlayer() {
+    const navigate = useNavigate();
     const { contentId } = useParams();
+    const [loading, setLoading] = useState(true);
+    const [contentData, setContentData] = useState({});
 
-    console.log(contentId);
+    const handleDisplay = async () => {
+        const isSuccess = await displayPlayer(navigate, toast, contentId);
+
+        if (isSuccess) {
+            setLoading(false);
+            setContentData(isSuccess.contentInfo);
+            console.log(isSuccess)
+        }
+    }
+
+    useEffect(() => {
+        handleDisplay();
+    }, [contentId]);
 
     const [selectedSeason, setSelectedSeason] = useState('1');
     const [selectedEpisode, setSelectedEpisode] = useState('1');
@@ -24,14 +43,17 @@ function ContentPlayer() {
                     </h2>
                 </div>
             </nav>
-            <div className="player-container py-4">
+
+            <PlayerLoader loading={loading} />
+
+            <div className="player-container py-4" style={{display : loading ? 'none' : 'block'}}>
                 <div className="player-layout">
                     <div className="video-section">
                         <div className="video-player-wrapper">
                             <video
                                 className="video-player"
                                 controls
-                                poster="https://image.tmdb.org/t/p/original/ztkUQFLlC19CCMYHW9o1zWhJRNq.jpg">
+                                poster={contentData?.posterUrl?.horizontal || '{}'}>
                                 <source
                                     src="/videos/breakingbad-s1ep1.mp4"
                                     type="video/mp4"
@@ -53,14 +75,14 @@ function ContentPlayer() {
                             <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
                                 <div>
                                     <h1 className="series-title mb-2">
-                                        Breaking Bad
+                                        {contentData?.title || 'Content Title'}
                                     </h1>
                                     <p className="series-subtitle mb-0">
-                                        Crime • Drama • Thriller
+                                        {contentData?.genre?.join(' • ') || 'Genre'}
                                     </p>
                                 </div>
 
-                                <div className="season-dropdown">
+                                <div className="season-dropdown" style={{ display: contentData?.contentType === 'series' ? 'block' : 'none' }}>
                                     <label className="dropdown-label">
                                         Season
                                     </label>
@@ -78,10 +100,10 @@ function ContentPlayer() {
                             </div>
 
                             <p className="series-description">
-                                A high school chemistry teacher diagnosed with cancer starts manufacturing crystal meth with a former student in order to secure his family's future.
+                                {contentData?.description || 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.'}
                             </p>
 
-                            <div className="episode-wrapper mt-4">
+                            <div className="episode-wrapper mt-4" style={{ display: contentData?.contentType === 'series' ? 'block' : 'none' }}>
                                 <h4 className="episode-heading mb-3">
                                     Episodes
                                 </h4>
@@ -106,57 +128,57 @@ function ContentPlayer() {
                     <div className="imdb-banner-card">
                         <div className="info-section">
                             <img
-                                src="https://image.tmdb.org/t/p/original/ztkUQFLlC19CCMYHW9o1zWhJRNq.jpg"
-                                alt="Breaking Bad Poster"
+                                src={contentData?.posterUrl?.vertical || 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRoWcWg0E8pSjBNi0TtiZsqu8uD2PAr_K11DA&s'}
+                                alt={contentData?.title ? `${contentData.title} Poster` : 'Movie Poster'}
                                 className="movie-poster"
                             />
 
-                            <div className="movie-meta">
+                            <div className="movie-meta mb-4">
                                 <div className="meta-item">
                                     <i className="bi bi-star-fill"></i>
-                                    <span>9.5 IMDb</span>
+                                    <span>{contentData?.rating || 'N/A'} IMDb</span>
                                 </div>
 
                                 <div className="meta-item">
                                     <i className="bi bi-clock"></i>
-                                    <span>58 min</span>
+                                    <span>{contentData?.runtime || 'N/A'}</span>
                                 </div>
 
                                 <div className="meta-item">
                                     <i className="bi bi-calendar-event"></i>
-                                    <span>2008</span>
+                                    <span>{contentData?.release || 'N/A'}</span>
                                 </div>
                             </div>
 
                             <div className="movie-details-grid">
                                 <div className="detail-label">Genre:</div>
                                 <div className="detail-value">
-                                    Crime, Drama, Thriller
+                                    {contentData?.genre?.join(', ') || 'N/A'}
                                 </div>
 
                                 <div className="detail-label">Director:</div>
                                 <div className="detail-value">
-                                    Vince Gilligan
+                                    {contentData?.directors?.join(', ') || 'N/A'}
                                 </div>
 
                                 <div className="detail-label">Cast:</div>
                                 <div className="detail-value">
-                                    Bryan Cranston, Aaron Paul, Anna Gunn
+                                    {contentData?.cast?.join(', ') || 'N/A'}
                                 </div>
 
                                 <div className="detail-label">Release Date:</div>
                                 <div className="detail-value">
-                                    20 Jan 2008
+                                    {contentData?.release || 'N/A'}
                                 </div>
 
                                 <div className="detail-label">Country:</div>
                                 <div className="detail-value">
-                                    United States
+                                    {contentData?.country || 'N/A'}
                                 </div>
 
                                 <div className="detail-label">Language:</div>
                                 <div className="detail-value">
-                                    English
+                                    {contentData?.language || 'N/A'}
                                 </div>
                             </div>
                         </div>
