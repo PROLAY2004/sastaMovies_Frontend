@@ -3,14 +3,19 @@ import { useParams, useNavigate } from "react-router-dom";
 import { toast } from 'react-toastify';
 
 import '../../styles/player.scss';
+import configaruration from '../../config/config.js';
 import displayPlayer from './fetchContent.js';
+import isAuthenticated from '../../utils/checkAuth.js';
 import PlayerLoader from '../../components/PlayerLoader.jsx'
 
 function ContentPlayer() {
     const navigate = useNavigate();
     const { contentId } = useParams();
     const [loading, setLoading] = useState(true);
+    const [seasonIndex, setSeasonIndex] = useState(0);
+    const [episodeIndex, setEpisodeIndex] = useState(0);
     const [contentData, setContentData] = useState({});
+    const [episodes, setEpisodes] = useState([]);
 
     const handleDisplay = async () => {
         const isSuccess = await displayPlayer(navigate, toast, contentId);
@@ -18,6 +23,7 @@ function ContentPlayer() {
         if (isSuccess) {
             setLoading(false);
             setContentData(isSuccess.contentInfo);
+
             console.log(isSuccess)
         }
     }
@@ -26,13 +32,11 @@ function ContentPlayer() {
         handleDisplay();
     }, [contentId]);
 
-    const [selectedSeason, setSelectedSeason] = useState('1');
-    const [selectedEpisode, setSelectedEpisode] = useState('1');
-
-    const episodes = {
-        1: ['Episode 1', 'Episode 2', 'Episode 3', 'Episode 4'],
-        2: ['Episode 1', 'Episode 2', 'Episode 3'],
-    };
+    useEffect(() => {
+        if (contentData.contentType === 'series') {
+            setEpisodes(contentData?.contentIds[seasonIndex] || []);
+        }
+    }, [contentData, seasonIndex]);
 
     return (
         <main className="player-page">
@@ -46,29 +50,45 @@ function ContentPlayer() {
 
             <PlayerLoader loading={loading} />
 
-            <div className="player-container py-4" style={{display : loading ? 'none' : 'block'}}>
+            <div className="player-container py-4" style={{ display: loading ? 'none' : 'block' }}>
                 <div className="player-layout">
                     <div className="video-section">
                         <div className="video-player-wrapper">
-                            <video
-                                className="video-player"
-                                controls
-                                poster={contentData?.posterUrl?.horizontal || '{}'}>
-                                <source
-                                    src="/videos/breakingbad-s1ep1.mp4"
-                                    type="video/mp4"
-                                />
+                            {isAuthenticated() ? (
+                                <video
+                                    key={`${contentId}-${seasonIndex}-${episodeIndex}`}
+                                    className="video-player"
+                                    controls
+                                    crossOrigin="anonymous"
+                                    poster={contentData?.posterUrl?.horizontal || '{}'}>
 
-                                <track
-                                    src="/subtitles/breakingbad-s1ep1.vtt"
-                                    kind="subtitles"
-                                    srcLang="en"
-                                    label="English"
-                                    default
-                                />
+                                    <source
+                                        src={`${configaruration.BASE_URL}/user/stream/${contentId}?season=${seasonIndex}&episode=${episodeIndex}`}
+                                        type="video/mp4"
+                                    />
 
-                                Your browser does not support the video tag.
-                            </video>
+                                    {contentData?.subtitles?.[seasonIndex]?.[episodeIndex] && (
+                                        <track
+                                            src={contentData?.subtitles?.[seasonIndex]?.[episodeIndex]}
+                                            kind="subtitles"
+                                            srcLang="en"
+                                            label="English"
+                                            default
+                                        />
+                                    )}
+
+                                    Your browser does not support the video tag.
+                                </video>
+                            ) : (
+                                // FALLBACK UI IF NOT LOGGED IN
+                                <video
+                                    className="video-player"
+                                    controls
+                                    poster={contentData?.posterUrl?.horizontal || '{}'}>
+
+                                    Your browser does not support the video tag.
+                                </video>
+                            )}
                         </div>
 
                         <div className="series-content-box mt-4">
@@ -87,14 +107,15 @@ function ContentPlayer() {
                                         Season
                                     </label>
                                     <select
-                                        value={selectedSeason}
+                                        value={seasonIndex}
                                         onChange={(e) => {
-                                            setSelectedSeason(e.target.value);
-                                            setSelectedEpisode('1');
+                                            setSeasonIndex(parseInt(e.target.value));
+                                            setEpisodeIndex(0);
                                         }}
                                         className="season-select">
-                                        <option value="1">Season 1</option>
-                                        <option value="2">Season 2</option>
+                                        {contentData?.contentIds?.map((_, i) => (
+                                            <option key={contentData._id + i} value={i}>Season {i + 1}</option>
+                                        ))}
                                     </select>
                                 </div>
                             </div>
@@ -109,11 +130,11 @@ function ContentPlayer() {
                                 </h4>
 
                                 <div className="episode-list">
-                                    {episodes[selectedSeason].map((episode, index) => (
+                                    {episodes.map((_, index) => (
                                         <button
                                             key={index}
-                                            onClick={() => setSelectedEpisode(String(index + 1))}
-                                            className={`episode-btn ${selectedEpisode === String(index + 1)
+                                            onClick={() => setEpisodeIndex(index)}
+                                            className={`episode-btn ${episodeIndex === index
                                                 ? 'active'
                                                 : ''
                                                 }`}>
