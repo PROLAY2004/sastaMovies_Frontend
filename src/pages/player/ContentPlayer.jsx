@@ -6,6 +6,7 @@ import '../../styles/player.scss';
 import configaruration from '../../config/config.js';
 import displayPlayer from './fetchContent.js';
 import PlayerLoader from '../../components/PlayerLoader.jsx';
+import ImdbCard from '../../components/ImdbCard.jsx';
 
 function ContentPlayer() {
     const navigate = useNavigate();
@@ -20,6 +21,8 @@ function ContentPlayer() {
     const volumeRef = useRef(null);
     const idleTimeoutRef = useRef(null);
     const volumeTimeoutRef = useRef(null);
+    const clickTimeoutRef = useRef(null);
+    const seekTimeoutRef = useRef(null);
 
     // ==========================================
     // 2. STATE
@@ -33,6 +36,7 @@ function ContentPlayer() {
 
     // Player State
     const [isPlaying, setIsPlaying] = useState(false);
+    const [isVideoBuffering, setIsVideoBuffering] = useState(true);
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
     const [volume, setVolume] = useState(1); // Range: 0 to 1
@@ -40,6 +44,7 @@ function ContentPlayer() {
     const [playbackRate, setPlaybackRate] = useState(1);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [captionsEnabled, setCaptionsEnabled] = useState(false);
+    const [seekAnimation, setSeekAnimation] = useState(null);
 
     // UI & Interaction State
     const [isIdle, setIsIdle] = useState(false);
@@ -51,6 +56,8 @@ function ContentPlayer() {
     // 3. DATA FETCHING
     // ==========================================
     useEffect(() => {
+        window.scrollTo(0, 0);
+
         const fetchContent = async () => {
             const isSuccess = await displayPlayer(navigate, toast, contentId);
             if (isSuccess) {
@@ -70,6 +77,11 @@ function ContentPlayer() {
     // ==========================================
     // 4. TIMERS & HELPERS
     // ==========================================
+    const getClientX = (e) => {
+        // If it's a touch event, grab the first finger's position. Otherwise, grab the mouse position.
+        return e.touches && e.touches.length > 0 ? e.touches[0].clientX : e.clientX;
+    };
+    
     const resetIdleTimer = () => {
         setIsIdle(false);
         if (idleTimeoutRef.current) clearTimeout(idleTimeoutRef.current);
@@ -114,16 +126,66 @@ function ContentPlayer() {
     // ==========================================
     const togglePlay = () => {
         if (videoRef.current.paused) {
-            videoRef.current.play();
+            // Force spinner to show immediately upon clicking
+            setIsVideoBuffering(true);
             setIsPlaying(true);
+
+            videoRef.current.play().catch((err) => {
+                // If the browser blocks playback, hide spinner and reset play state
+                setIsVideoBuffering(false);
+                setIsPlaying(false);
+                console.warn("Playback prevented:", err);
+            });
         } else {
             videoRef.current.pause();
             setIsPlaying(false);
         }
     };
 
+    const handleVideoClick = (e) => {
+        // Grab the click's X coordinate and the video's total width
+        const rect = e.target.getBoundingClientRect();
+        const clientX = e.clientX;
+
+        if (clickTimeoutRef.current) {
+            // A timer is running, meaning this is the SECOND tap (Double Tap!)
+            clearTimeout(clickTimeoutRef.current);
+            clickTimeoutRef.current = null;
+
+            // Check if clicked on the right half or left half of the screen
+            const isRightSide = clientX > rect.left + (rect.width / 2);
+
+            if (isRightSide) {
+                skip(10); // Forward 10s
+            } else {
+                skip(-10); // Backward 10s
+            }
+        } else {
+            // First tap: Start a 250ms timer. 
+            // If they don't tap again, it triggers a normal play/pause.
+            clickTimeoutRef.current = setTimeout(() => {
+                togglePlay();
+                clickTimeoutRef.current = null;
+            }, 250);
+        }
+    };
+
     const skip = (time) => {
-        if (videoRef.current) videoRef.current.currentTime += time;
+        if (videoRef.current) {
+            videoRef.current.currentTime += time;
+
+            // Trigger the animation
+            const direction = time > 0 ? 'forward' : 'backward';
+            setSeekAnimation(direction);
+
+            // Clear any existing animation timer so it resets if they tap quickly multiple times
+            if (seekTimeoutRef.current) clearTimeout(seekTimeoutRef.current);
+
+            // Hide the animation after 600ms
+            seekTimeoutRef.current = setTimeout(() => {
+                setSeekAnimation(null);
+            }, 600);
+        }
     };
 
     const toggleMute = () => {
@@ -141,7 +203,15 @@ function ContentPlayer() {
 
     const toggleFullscreen = () => {
         if (!document.fullscreenElement) {
-            playerContainerRef.current.requestFullscreen().catch(err => {
+            playerContainerRef.current.requestFullscreen().then(() => {
+                // Try to lock the screen to landscape for mobile devices
+                if (window.screen && window.screen.orientation && window.screen.orientation.lock) {
+                    window.screen.orientation.lock('landscape').catch((err) => {
+                        // Some browsers/devices don't support this, so we silently catch the error
+                        console.warn("Screen orientation lock not supported:", err);
+                    });
+                }
+            }).catch(err => {
                 toast.error(`Fullscreen Error: ${err.message}`);
             });
         } else {
@@ -176,7 +246,8 @@ function ContentPlayer() {
     const handleProgressScrub = (e) => {
         if (progressRef.current && duration > 0) {
             const rect = progressRef.current.getBoundingClientRect();
-            const scrubPosition = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+            const clientX = getClientX(e);
+            const scrubPosition = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
             const newTime = scrubPosition * duration;
             setCurrentTime(newTime);
             videoRef.current.currentTime = newTime;
@@ -186,7 +257,8 @@ function ContentPlayer() {
     const handleVolumeScrub = (e) => {
         if (volumeRef.current) {
             const rect = volumeRef.current.getBoundingClientRect();
-            const scrubPosition = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+            const clientX = getClientX(e);
+            const scrubPosition = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
             videoRef.current.volume = scrubPosition;
             setVolume(scrubPosition);
             if (scrubPosition > 0) setIsMuted(false);
@@ -208,6 +280,24 @@ function ContentPlayer() {
     // ==========================================
     // Dragging Listeners
     useEffect(() => {
+        const handleMove = (e) => {
+            if (isDraggingProgress) handleProgressScrub(e);
+            if (isDraggingVolume) handleVolumeScrub(e);
+        };
+        const handleEnd = () => {
+            setIsDraggingProgress(false);
+            setIsDraggingVolume(false);
+        };
+
+        if (isDraggingProgress || isDraggingVolume) {
+            // Mouse Events
+            document.addEventListener('mousemove', handleMove);
+            document.addEventListener('mouseup', handleEnd);
+            // Touch Events
+            document.addEventListener('touchmove', handleMove, { passive: false });
+            document.addEventListener('touchend', handleEnd);
+        }
+
         const handleMouseMove = (e) => {
             if (isDraggingProgress) handleProgressScrub(e);
             if (isDraggingVolume) handleVolumeScrub(e);
@@ -224,6 +314,10 @@ function ContentPlayer() {
         return () => {
             document.removeEventListener('mousemove', handleMouseMove);
             document.removeEventListener('mouseup', handleMouseUp);
+            document.removeEventListener('mousemove', handleMove);
+            document.removeEventListener('mouseup', handleEnd);
+            document.removeEventListener('touchmove', handleMove);
+            document.removeEventListener('touchend', handleEnd);
         };
     }, [isDraggingProgress, isDraggingVolume, duration]);
 
@@ -278,7 +372,16 @@ function ContentPlayer() {
 
     // Fullscreen Listener
     useEffect(() => {
-        const handleFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
+        const handleFullscreenChange = () => {
+            const isFs = !!document.fullscreenElement;
+            setIsFullscreen(isFs);
+
+            // If we just exited fullscreen, unlock the screen rotation
+            if (!isFs && window.screen && window.screen.orientation && window.screen.orientation.unlock) {
+                window.screen.orientation.unlock();
+            }
+        };
+
         document.addEventListener('fullscreenchange', handleFullscreenChange);
         return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
     }, []);
@@ -317,10 +420,15 @@ function ContentPlayer() {
                                 className="video-element"
                                 crossOrigin="anonymous"
                                 poster={contentData?.posterUrl?.horizontal || '{}'}
-                                onClick={togglePlay}
+                                onClick={handleVideoClick}
                                 onTimeUpdate={handleTimeUpdate}
                                 onLoadedMetadata={handleLoadedMetadata}
                                 onEnded={() => setIsPlaying(false)}
+                                
+                                onLoadStart={() => setIsVideoBuffering(true)}
+                                onWaiting={() => setIsVideoBuffering(true)}
+                                onPlaying={() => setIsVideoBuffering(false)}
+                                onCanPlay={() => setIsVideoBuffering(false)}
                             >
                                 <source
                                     src={`${configaruration.BASE_URL}/user/stream/${contentId}?season=${seasonIndex}&episode=${episodeIndex}`}
@@ -337,8 +445,38 @@ function ContentPlayer() {
                                 Your browser does not support the video tag.
                             </video>
 
-                            {/* Center Play Button */}
-                            <div className={`center-play-overlay ${isPlaying ? 'is-playing' : ''}`} onClick={togglePlay}>
+                            {isVideoBuffering && (
+                                <div className="video-spinner-overlay">
+                                    <div className="video-spinner"></div>
+                                </div>
+                            )}
+
+                            <div className={`seek-ripple-overlay left ${seekAnimation === 'backward' ? 'animate' : ''}`}>
+                                <div className="ripple-circle"></div>
+                                <div className="seek-content">
+                                    <div className="arrows">
+                                        <i className="bi bi-caret-left-fill"></i>
+                                        <i className="bi bi-caret-left-fill"></i>
+                                        <i className="bi bi-caret-left-fill"></i>
+                                    </div>
+                                    <span>10 seconds</span>
+                                </div>
+                            </div>
+
+                            <div className={`seek-ripple-overlay right ${seekAnimation === 'forward' ? 'animate' : ''}`}>
+                                <div className="ripple-circle"></div>
+                                <div className="seek-content">
+                                    <div className="arrows">
+                                        <i className="bi bi-caret-right-fill"></i>
+                                        <i className="bi bi-caret-right-fill"></i>
+                                        <i className="bi bi-caret-right-fill"></i>
+                                    </div>
+                                    <span>10 seconds</span>
+                                </div>
+                            </div>
+
+                            {/* Center Play Button (Hidden if playing OR if actively buffering) */}
+                            <div className={`center-play-overlay ${(isPlaying || isVideoBuffering) ? 'is-playing' : ''}`} onClick={togglePlay}>
                                 <button className="center-play-btn">
                                     <i className="bi bi-play-fill"></i>
                                 </button>
@@ -347,7 +485,7 @@ function ContentPlayer() {
                             {/* Bottom Control Bar */}
                             <div className="custom-controls">
                                 {/* Progress Timeline */}
-                                <div className="progress-container" ref={progressRef} onMouseDown={handleProgressMouseDown}>
+                                <div className="progress-container" ref={progressRef} onMouseDown={handleProgressMouseDown} onTouchStart={handleProgressMouseDown}>
                                     <div className="progress-bar" style={{ width: '100%', height: '100%', position: 'relative' }}>
                                         <div className="progress-filled" style={{ width: `${progressPercentage}%` }}></div>
                                         <div className="progress-thumb" style={{ left: `${progressPercentage}%` }}></div>
@@ -372,7 +510,7 @@ function ContentPlayer() {
                                                 <i className={`bi ${isMuted || volume === 0 ? 'bi-volume-mute-fill' : volume < 0.5 ? 'bi-volume-down-fill' : 'bi-volume-up-fill'}`}></i>
                                             </button>
                                             <div className="volume-slider-container">
-                                                <div className="volume-slider" ref={volumeRef} onMouseDown={handleVolumeMouseDown}>
+                                                <div className="volume-slider" ref={volumeRef} onMouseDown={handleVolumeMouseDown} onTouchStart={handleVolumeMouseDown}>
                                                     <div className="volume-filled" style={{ width: `${volumePercentage}%` }}></div>
                                                     <div className="volume-thumb" style={{ left: `${volumePercentage}%` }}></div>
                                                 </div>
@@ -445,6 +583,8 @@ function ContentPlayer() {
                                             onClick={() => {
                                                 setEpisodeIndex(index);
                                                 setIsPlaying(false);
+                                                setCurrentTime(0);
+                                                setIsVideoBuffering(true); // <-- Add this to force spinner immediately
                                             }}
                                             className={`episode-btn ${episodeIndex === index ? 'active' : ''}`}>
                                             EP {index + 1}
@@ -456,50 +596,7 @@ function ContentPlayer() {
                     </div>
 
                     {/* --- SIDEBAR BANNER --- */}
-                    <div className="imdb-banner-card">
-                        <div className="info-section">
-                            <img
-                                src={contentData?.posterUrl?.vertical || 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRoWcWg0E8pSjBNi0TtiZsqu8uD2PAr_K11DA&s'}
-                                alt={contentData?.title ? `${contentData.title} Poster` : 'Movie Poster'}
-                                className="movie-poster"
-                            />
-
-                            <div className="movie-meta mb-4">
-                                <div className="meta-item">
-                                    <i className="bi bi-star-fill"></i>
-                                    <span>{contentData?.rating || 'N/A'} IMDb</span>
-                                </div>
-                                <div className="meta-item">
-                                    <i className="bi bi-clock"></i>
-                                    <span>{contentData?.runtime || 'N/A'}</span>
-                                </div>
-                                <div className="meta-item">
-                                    <i className="bi bi-calendar-event"></i>
-                                    <span>{contentData?.release?.slice(-4) || 'N/A'}</span>
-                                </div>
-                            </div>
-
-                            <div className="movie-details-grid">
-                                <div className="detail-label">Genre:</div>
-                                <div className="detail-value">{contentData?.genre?.join(', ') || 'N/A'}</div>
-
-                                <div className="detail-label">Director:</div>
-                                <div className="detail-value">{contentData?.directors?.join(', ') || 'N/A'}</div>
-
-                                <div className="detail-label">Cast:</div>
-                                <div className="detail-value">{contentData?.cast?.join(', ') || 'N/A'}</div>
-
-                                <div className="detail-label">Release Date:</div>
-                                <div className="detail-value">{contentData?.release || 'N/A'}</div>
-
-                                <div className="detail-label">Country:</div>
-                                <div className="detail-value">{contentData?.country || 'N/A'}</div>
-
-                                <div className="detail-label">Language:</div>
-                                <div className="detail-value">{contentData?.language || 'N/A'}</div>
-                            </div>
-                        </div>
-                    </div>
+                    <ImdbCard contentData={contentData} />
                 </div>
             </div>
         </main>

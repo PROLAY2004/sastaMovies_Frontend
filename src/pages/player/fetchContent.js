@@ -1,13 +1,15 @@
 import Api from '../../api/Api.js';
-import configaration from '../../config/config.js';
+import apiInterceptor from '../../api/interceptor.js';
 
 const api = new Api();
 
 export default async function displayPlayer(navigate, toast, contentId) {
 	try {
-		const response = await api.postApi(
-			`${configaration.BASE_URL}/user/fetch-player`,
-			'',
+		const response = await apiInterceptor(
+			navigate,
+			toast,
+			'POST',
+			'/user/fetch-player',
 			{ contentId },
 		);
 

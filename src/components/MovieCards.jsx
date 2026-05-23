@@ -11,6 +11,15 @@ function MovieCards(cardDetails) {
     const [loading, setLoading] = useState(false);
     const [btnDisplay, setBtnDisplay] = useState(true);
 
+    const handleWatch = () => {
+        if (!isAuthenticated()) {
+            cardDetails.LoginRequiredModal(true);
+        }
+        else {
+            navigate(`/player/${cardDetails.movie?._id}`);
+        }
+    }
+
     const userFetch = async () => {
         if (isAuthenticated()) {
             const userDetails = await getUser(navigate, toast);
@@ -18,7 +27,7 @@ function MovieCards(cardDetails) {
             if (userDetails.user.savedContents?.includes(cardDetails.movie?._id)) {
                 setBtnDisplay(false);
             }
-            else{
+            else {
                 setBtnDisplay(true);
             }
         }
@@ -39,7 +48,7 @@ function MovieCards(cardDetails) {
 
             if (isSuccess) {
                 setBtnDisplay(!btnDisplay);
-                cardDetails.refresh((prev) =>  prev + 1)
+                cardDetails.refresh((prev) => prev + 1)
             }
         }
 
@@ -66,8 +75,8 @@ function MovieCards(cardDetails) {
                         </div>
                     </div>
                     <div className="card-buttons">
-                        <button className="btn-watch-sm watch-now-btn" onClick={() => navigate(`/player/${cardDetails.movie?._id}`)} >
-                            <i className="bi bi-play-fill"></i> 
+                        <button className="btn-watch-sm watch-now-btn" onClick={handleWatch}>
+                            <i className="bi bi-play-fill"></i>
                             Watch
                         </button>
 

@@ -11,6 +11,15 @@ function SeriesCards(cardDetails) {
     const [loading, setLoading] = useState(false);
     const [btnDisplay, setBtnDisplay] = useState(true);
 
+    const handleWatch = () => {
+        if (!isAuthenticated()) {
+            cardDetails.LoginRequiredModal(true);
+        }
+        else{
+            navigate(`/player/${cardDetails.series?._id}`);
+        }
+    }
+
     const userFetch = async () => {
         if (isAuthenticated()) {
             const userDetails = await getUser(navigate, toast);
@@ -66,7 +75,11 @@ function SeriesCards(cardDetails) {
                         </div>
                     </div>
                     <div className="card-buttons">
-                        <button className="btn-watch-sm watch-now-btn" onClick={() => navigate(`/player/${cardDetails.series?._id}`)} ><i className="bi bi-play-fill"></i> Watch</button>
+                        <button className="btn-watch-sm watch-now-btn" 
+                            onClick={handleWatch}>
+                                <i className="bi bi-play-fill"></i> 
+                                Watch
+                        </button>
 
                         {
                             btnDisplay ? (

@@ -10,6 +10,7 @@ import HeroSection from '../../components/HeroSection.jsx';
 import MovieCards from '../../components/MovieCards.jsx';
 import SeriesCards from '../../components/SeriesCards.jsx';
 import displayHome from './fetchHome.js';
+import LoginRequiredModal from '../../components/LoginRequiredModal.jsx';
 
 function Home() {
 	const navigate = useNavigate();
@@ -21,7 +22,7 @@ function Home() {
 	const [pageReload, setPageReload] = useState(0);
 	const [moviesEmptyState, setMoviesEmptyState] = useState(true);
 	const [seriesEmptyState, setSeriesEmptyState] = useState(true);
-
+	const [showLoginModal, setShowLoginModal] = useState(false);
 	const handleDisplay = async () => {
 		const isSuccess = await displayHome(navigate, toast);
 
@@ -65,18 +66,18 @@ function Home() {
 			<HomeLoader loading={loading} />
 
 			<main style={{ display: loading ? 'none' : 'block' }}>
-				<HeroSection randomContent={randomContent} pageReload={pageReload} refresh={setPageReload} />
+				<HeroSection randomContent={randomContent} pageReload={pageReload} refresh={setPageReload} LoginRequiredModal={(showModal) => setShowLoginModal(showModal)} />
 
 				<div className="container py-3">
 					<div className="section-header">
-						<h2 className="section-title">🎬 Movies</h2>
+						<h2 className="section-title">Movies</h2>
 						<Link to="/movies" className="section-link">
 							View all <i className="bi bi-arrow-right-short"></i>
 						</Link>
 					</div>
 					<div className="row g-4">
 						{movies.map((movie) => (
-							<MovieCards key={movie._id} movie={movie} pageReload={pageReload} refresh={setPageReload} />
+							<MovieCards key={movie._id} movie={movie} pageReload={pageReload} refresh={setPageReload} LoginRequiredModal={(showModal) => setShowLoginModal(showModal)} />
 						))}
 
 						<div className="movie-card text-center py-3" style={{ display: moviesEmptyState ? 'block' : 'none' }}>
@@ -103,14 +104,14 @@ function Home() {
 
 				<div className="container py-3">
 					<div className="section-header">
-						<h2 className="section-title">📺 Series</h2>
+						<h2 className="section-title">Series</h2>
 						<Link to="/series" className="section-link">
 							View all <i className="bi bi-arrow-right-short"></i>
 						</Link>
 					</div>
 					<div className="row g-4">
 						{series.map((series) => (
-							<SeriesCards key={series._id} series={series} pageReload={pageReload} refresh={setPageReload} />
+							<SeriesCards key={series._id} series={series} pageReload={pageReload} refresh={setPageReload} LoginRequiredModal={(showModal) => setShowLoginModal(showModal)} />
 						))}
 
 						<div className="movie-card text-center py-3" style={{ display: seriesEmptyState ? 'block' : 'none' }}>
@@ -190,6 +191,8 @@ function Home() {
 					</p>
 				</div>
 			</footer>
+
+			<LoginRequiredModal show={showLoginModal} onClose={() => setShowLoginModal(false)} />
 		</>
 	);
 }

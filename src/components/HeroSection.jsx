@@ -6,10 +6,20 @@ import setContent from "../pages/home/setContent.js";
 import isAuthenticated from "../utils/checkAuth.js";
 import getUser from "../utils/fetchUserDetails.js";
 
-function HeroSection({ randomContent, pageReload, refresh }) {
+function HeroSection({ randomContent, pageReload, refresh, LoginRequiredModal }) {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [btnDisplay, setBtnDisplay] = useState(true);
+
+
+    const handleWatch = () => {
+        if (!isAuthenticated()) {
+            LoginRequiredModal(true);
+        }
+        else {
+            navigate(`/player/${randomContent?._id}`);
+        }
+    }
 
     const userFetch = async () => {
         if (isAuthenticated()) {
@@ -18,7 +28,7 @@ function HeroSection({ randomContent, pageReload, refresh }) {
             if (userDetails.user.savedContents?.includes(randomContent?._id)) {
                 setBtnDisplay(false);
             }
-            else{
+            else {
                 setBtnDisplay(true);
             }
         }
@@ -75,10 +85,10 @@ function HeroSection({ randomContent, pageReload, refresh }) {
                         {randomContent?.description || 'Your premium hub to stream the future.'}
                     </p>
                     <div className="hero-meta">
-                        <span>{randomContent?.release?.slice(-4) || 'Stream'}</span> • {randomContent?.genre?.join(', ') || 'Chill'} • {randomContent?.runtime !== 'N/A' ? randomContent?.runtime : randomContent?.contentIds?.length + " Seasons"  || 'Repeat'}
+                        <span>{randomContent?.release?.slice(-4) || 'Stream'}</span> • {randomContent?.genre?.join(', ') || 'Chill'} • {randomContent?.runtime !== 'N/A' ? randomContent?.runtime : randomContent?.contentIds?.length + " Seasons" || 'Repeat'}
                     </div>
-                    <div className="hero-buttons" style={{display : randomContent ? 'flex' : "none"}}>
-                        <button className="btn-hero" onClick={() => navigate(`/player/${randomContent?._id}`)}>
+                    <div className="hero-buttons" style={{ display: randomContent ? 'flex' : "none" }}>
+                        <button className="btn-hero" onClick={handleWatch}>
                             <i className="bi bi-play-fill fst-normal"> Watch Now</i>
                         </button>
                         {
