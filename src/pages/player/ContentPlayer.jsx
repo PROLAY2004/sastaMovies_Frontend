@@ -24,11 +24,13 @@ function ContentPlayer() {
     const clickTimeoutRef = useRef(null);
     const seekTimeoutRef = useRef(null);
 
-    // New Refs for Hold & Pinch Gestures
+    // Gestures & Interaction Refs
     const holdTimeoutRef = useRef(null);
     const isHoldingRef = useRef(false);
     const ignoreNextClickRef = useRef(false);
     const initialPinchDistRef = useRef(null);
+    const touchStartRef = useRef(null); // Track 1-finger swipe for Volume/Brightness
+    const gestureTimeoutRef = useRef(null);
 
     // ==========================================
     // 2. STATE
@@ -44,6 +46,7 @@ function ContentPlayer() {
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
     const [volume, setVolume] = useState(1);
+    const [brightness, setBrightness] = useState(1); // Faux brightness (0.1 to 1)
     const [isMuted, setIsMuted] = useState(false);
     const [playbackRate, setPlaybackRate] = useState(1);
     const [isFullscreen, setIsFullscreen] = useState(false);
@@ -55,9 +58,10 @@ function ContentPlayer() {
     const [isDraggingProgress, setIsDraggingProgress] = useState(false);
     const [isDraggingVolume, setIsDraggingVolume] = useState(false);
 
-    // New States for Advanced UI
+    // Advanced UI States
     const [showSpeedBadge, setShowSpeedBadge] = useState(false);
     const [isZoomed, setIsZoomed] = useState(false);
+    const [gestureInfo, setGestureInfo] = useState(null); // { type: 'volume' | 'brightness', value: 0-1 }
 
     // ==========================================
     // 3. DATA FETCHING
@@ -83,9 +87,7 @@ function ContentPlayer() {
     // ==========================================
     // 4. TIMERS & HELPERS
     // ==========================================
-    const getClientX = (e) => {
-        return e.touches && e.touches.length > 0 ? e.touches[0].clientX : e.clientX;
-    };
+    const getClientX = (e) => e.touches && e.touches.length > 0 ? e.touches[0].clientX : e.clientX;
 
     const resetIdleTimer = () => {
         setIsIdle(false);
@@ -105,9 +107,7 @@ function ContentPlayer() {
     const triggerVolumeUI = () => {
         setShowVolumeUI(true);
         if (volumeTimeoutRef.current) clearTimeout(volumeTimeoutRef.current);
-        volumeTimeoutRef.current = setTimeout(() => {
-            setShowVolumeUI(false);
-        }, 2000);
+        volumeTimeoutRef.current = setTimeout(() => setShowVolumeUI(false), 2000);
     };
 
     const formatTime = (timeInSeconds) => {
@@ -115,20 +115,20 @@ function ContentPlayer() {
         const hours = Math.floor(timeInSeconds / 3600);
         const minutes = Math.floor((timeInSeconds % 3600) / 60);
         const seconds = Math.floor(timeInSeconds % 60);
-
         const formattedSeconds = seconds < 10 ? `0${seconds}` : seconds;
         const formattedMinutes = minutes < 10 ? `0${minutes}` : minutes;
-
-        return hours > 0
-            ? `${hours}:${formattedMinutes}:${formattedSeconds}`
-            : `${formattedMinutes}:${formattedSeconds}`;
+        return hours > 0 ? `${hours}:${formattedMinutes}:${formattedSeconds}` : `${formattedMinutes}:${formattedSeconds}`;
     };
 
-    // --- NEW: HOLD TO 2x LOGIC ---
+    const showGestureIndicator = (type, value) => {
+        setGestureInfo({ type, value });
+        if (gestureTimeoutRef.current) clearTimeout(gestureTimeoutRef.current);
+        gestureTimeoutRef.current = setTimeout(() => setGestureInfo(null), 1500);
+    };
+
     const startHoldTimer = () => {
-        if (playbackRate === 2) return; // Only apply if not already 2x
+        if (playbackRate === 2) return;
         if (videoRef.current && !videoRef.current.paused) {
-            // Require a 400ms hold to activate
             holdTimeoutRef.current = setTimeout(() => {
                 isHoldingRef.current = true;
                 videoRef.current.playbackRate = 2;
@@ -145,11 +145,11 @@ function ContentPlayer() {
         if (isHoldingRef.current) {
             isHoldingRef.current = false;
             if (videoRef.current) {
-                videoRef.current.playbackRate = 1; // Revert strictly to 1x
+                videoRef.current.playbackRate = 1;
                 setPlaybackRate(1);
             }
             setShowSpeedBadge(false);
-            return true; // Returns true if we were actively holding
+            return true;
         }
         return false;
     };
@@ -173,8 +173,10 @@ function ContentPlayer() {
     };
 
     const handleVideoClick = (e) => {
-        // If we just released a "Hold to 2x", intercept the click so it doesn't pause the video
         if (ignoreNextClickRef.current) return;
+
+        // Prevent click events if we just finished a swipe gesture
+        if (touchStartRef.current && touchStartRef.current.swiped) return;
 
         const rect = e.target.getBoundingClientRect();
         const clientX = e.clientX;
@@ -201,9 +203,7 @@ function ContentPlayer() {
             setSeekAnimation(direction);
 
             if (seekTimeoutRef.current) clearTimeout(seekTimeoutRef.current);
-            seekTimeoutRef.current = setTimeout(() => {
-                setSeekAnimation(null);
-            }, 600);
+            seekTimeoutRef.current = setTimeout(() => setSeekAnimation(null), 600);
         }
     };
 
@@ -226,9 +226,7 @@ function ContentPlayer() {
                 if (window.screen && window.screen.orientation && window.screen.orientation.lock) {
                     window.screen.orientation.lock('landscape').catch(() => { });
                 }
-            }).catch(err => {
-                toast.error(`Fullscreen Error: ${err.message}`);
-            });
+            }).catch(err => toast.error(`Fullscreen Error: ${err.message}`));
         } else {
             document.exitFullscreen();
         }
@@ -246,7 +244,7 @@ function ContentPlayer() {
     };
 
     // ==========================================
-    // 6. MEDIA EVENTS & SCRUBBING
+    // 6. SCRUBBING
     // ==========================================
     const handleTimeUpdate = () => {
         if (!isDraggingProgress && videoRef.current) {
@@ -254,9 +252,7 @@ function ContentPlayer() {
         }
     };
 
-    const handleLoadedMetadata = () => {
-        setDuration(videoRef.current.duration);
-    };
+    const handleLoadedMetadata = () => setDuration(videoRef.current.duration);
 
     const handleProgressScrub = (e) => {
         if (progressRef.current && duration > 0) {
@@ -278,16 +274,6 @@ function ContentPlayer() {
             setVolume(scrubPosition);
             if (scrubPosition > 0) setIsMuted(false);
         }
-    };
-
-    const handleProgressMouseDown = (e) => {
-        setIsDraggingProgress(true);
-        handleProgressScrub(e);
-    };
-
-    const handleVolumeMouseDown = (e) => {
-        setIsDraggingVolume(true);
-        handleVolumeScrub(e);
     };
 
     // ==========================================
@@ -318,17 +304,13 @@ function ContentPlayer() {
         };
     }, [isDraggingProgress, isDraggingVolume, duration]);
 
-    // Keyboard Shortcuts (Including Spacebar Hold)
     useEffect(() => {
         const handleKeyDown = (e) => {
-            if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
-                e.preventDefault();
-            }
+            if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
             resetIdleTimer();
 
-            // Handle Spacebar exclusively here to allow "holding" 
             if (e.code === 'Space') {
-                if (e.repeat) return; // Prevent OS auto-repeat from going crazy
+                if (e.repeat) return;
                 startHoldTimer();
                 return;
             }
@@ -365,11 +347,7 @@ function ContentPlayer() {
         const handleKeyUp = (e) => {
             if (e.code === 'Space') {
                 e.preventDefault();
-                const wasHolding = endHoldTimer();
-                // If it was just a quick tap (timer didn't finish), toggle play!
-                if (!wasHolding) {
-                    togglePlay();
-                }
+                if (!endHoldTimer()) togglePlay();
             }
         };
 
@@ -381,21 +359,17 @@ function ContentPlayer() {
         };
     }, [isMuted, volume, isFullscreen, playbackRate]);
 
-    // Fullscreen Listener
     useEffect(() => {
         const handleFullscreenChange = () => {
             const isFs = !!document.fullscreenElement;
             setIsFullscreen(isFs);
-
             if (!isFs) {
-                // Unlock orientation and reset zoom if exiting fullscreen
                 if (window.screen && window.screen.orientation && window.screen.orientation.unlock) {
                     window.screen.orientation.unlock();
                 }
                 setIsZoomed(false);
             }
         };
-
         document.addEventListener('fullscreenchange', handleFullscreenChange);
         return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
     }, []);
@@ -405,6 +379,7 @@ function ContentPlayer() {
     // ==========================================
     const progressPercentage = duration ? (currentTime / duration) * 100 : 0;
     const volumePercentage = isMuted ? 0 : volume * 100;
+    const hasCaptions = Boolean(contentData?.subtitles?.[seasonIndex]?.[episodeIndex]);
 
     return (
         <main className="player-page">
@@ -426,6 +401,7 @@ function ContentPlayer() {
                             onMouseEnter={resetIdleTimer}
                             onMouseLeave={handlePlayerMouseLeave}
                             ref={playerContainerRef}
+                            style={{ touchAction: 'none' }} // Crucial to prevent page scrolling while swiping
                         >
                             <video
                                 ref={videoRef}
@@ -442,19 +418,98 @@ function ContentPlayer() {
                                 onWaiting={() => setIsVideoBuffering(true)}
                                 onPlaying={() => setIsVideoBuffering(false)}
                                 onCanPlay={() => {
-                                    if (videoRef.current && videoRef.current.paused) {
-                                        setIsVideoBuffering(false);
+                                    if (videoRef.current && videoRef.current.paused) setIsVideoBuffering(false);
+                                }}
+
+                                // --- MOBILE TOUCH & SWIPE EVENTS ---
+                                onTouchStart={(e) => {
+                                    if (e.touches.length === 2 && isFullscreen && isPlaying) {
+                                        // Pinch Zoom Start
+                                        const dist = Math.hypot(
+                                            e.touches[0].clientX - e.touches[1].clientX,
+                                            e.touches[0].clientY - e.touches[1].clientY
+                                        );
+                                        initialPinchDistRef.current = dist;
+                                    } else if (e.touches.length === 1 && isFullscreen && isPlaying) {
+                                        // Volume & Brightness Swipe Start
+                                        const touch = e.touches[0];
+                                        touchStartRef.current = {
+                                            y: touch.clientY,
+                                            type: touch.clientX < window.innerWidth / 2 ? 'brightness' : 'volume',
+                                            startVol: volume,
+                                            startBright: brightness,
+                                            swiped: false // Used to prevent click-to-pause if we swiped
+                                        };
+                                    }
+                                }}
+                                
+                                onTouchMove={(e) => {
+                                    if (e.touches.length === 2 && initialPinchDistRef.current && isFullscreen && isPlaying) {
+                                        // Pinch Zoom Move
+                                        const dist = Math.hypot(
+                                            e.touches[0].clientX - e.touches[1].clientX,
+                                            e.touches[0].clientY - e.touches[1].clientY
+                                        );
+
+                                        // If fingers are moving for a pinch, cancel the 2x hold timer!
+                                        if (Math.abs(dist - initialPinchDistRef.current) > 20) {
+                                            endHoldTimer();
+                                        }
+
+                                        // 40px threshold makes it feel intentional and less jittery
+                                        if (dist > initialPinchDistRef.current + 40) {
+                                            setIsZoomed(true); // Zoom In
+                                        } else if (dist < initialPinchDistRef.current - 40) {
+                                            setIsZoomed(false); // Zoom Out
+                                        }
+                                    } else if (e.touches.length === 1 && touchStartRef.current && isFullscreen && isPlaying) {
+                                        // Volume & Brightness Swipe Move
+                                        const touch = e.touches[0];
+                                        const deltaY = touchStartRef.current.y - touch.clientY; // UP is positive
+
+                                        // Require a 20px drag before activating (prevents accidental triggers on taps)
+                                        if (Math.abs(deltaY) > 20) {
+                                            touchStartRef.current.swiped = true;
+
+                                            // --- THE FIX: Instantly cancel 2x speed if the finger is swiping! ---
+                                            endHoldTimer();
+                                            // -------------------------------------------------------------------
+
+                                            // 1.5 multiplier makes the swipe feel responsive
+                                            const change = (deltaY / window.innerHeight) * 1.5;
+
+                                            if (touchStartRef.current.type === 'volume') {
+                                                let newVol = Math.max(0, Math.min(1, touchStartRef.current.startVol + change));
+                                                if (videoRef.current) {
+                                                    videoRef.current.volume = newVol;
+                                                    setVolume(newVol);
+                                                    setIsMuted(newVol === 0);
+                                                    showGestureIndicator('volume', newVol);
+                                                }
+                                            } else {
+                                                let newBright = Math.max(0.1, Math.min(1, touchStartRef.current.startBright + change));
+                                                setBrightness(newBright);
+                                                showGestureIndicator('brightness', newBright);
+                                            }
+                                        }
                                     }
                                 }}
 
-                                // --- MOBILE TOUCH & HOLD EVENTS ---
+                                onTouchEnd={(e) => {
+                                    initialPinchDistRef.current = null;
+                                    // Reset swipe state after a short delay so onClick doesn't accidentally trigger
+                                    if (touchStartRef.current) {
+                                        setTimeout(() => { touchStartRef.current = null; }, 100);
+                                    }
+                                }}
+
+                                // Pointer events for the Hold-to-2x speed
                                 onPointerDown={(e) => {
-                                    if (!e.isPrimary) return; // Only process the first finger
+                                    if (!e.isPrimary || !isPlaying) return;
                                     startHoldTimer();
                                 }}
                                 onPointerUp={() => {
                                     if (endHoldTimer()) {
-                                        // Ignore the incoming onClick event if we were just holding
                                         ignoreNextClickRef.current = true;
                                         setTimeout(() => ignoreNextClickRef.current = false, 150);
                                     }
@@ -462,38 +517,11 @@ function ContentPlayer() {
                                 onPointerLeave={() => endHoldTimer()}
                                 onPointerCancel={() => endHoldTimer()}
 
-                                // --- PINCH TO ZOOM EVENTS ---
-                                onTouchStart={(e) => {
-                                    if (e.touches.length === 2 && isFullscreen && isPlaying) {
-                                        const dist = Math.hypot(
-                                            e.touches[0].clientX - e.touches[1].clientX,
-                                            e.touches[0].clientY - e.touches[1].clientY
-                                        );
-                                        initialPinchDistRef.current = dist;
-                                    }
+                                // Apply Dynamic Zoom & Brightness
+                                style={{
+                                    objectFit: (isFullscreen && isZoomed) ? 'cover' : 'contain',
+                                    filter: `brightness(${brightness})`
                                 }}
-                                onTouchMove={(e) => {
-                                    if (e.touches.length === 2 && initialPinchDistRef.current && isFullscreen && isPlaying) {
-                                        const dist = Math.hypot(
-                                            e.touches[0].clientX - e.touches[1].clientX,
-                                            e.touches[0].clientY - e.touches[1].clientY
-                                        );
-                                        // 40px threshold makes it feel intentional and less jittery
-                                        if (dist > initialPinchDistRef.current + 40) {
-                                            setIsZoomed(true); // Zoom In
-                                        } else if (dist < initialPinchDistRef.current - 40) {
-                                            setIsZoomed(false); // Zoom Out
-                                        }
-                                    }
-                                }}
-                                onTouchEnd={(e) => {
-                                    if (e.touches.length < 2) {
-                                        initialPinchDistRef.current = null;
-                                    }
-                                }}
-
-                                // Dynamic Zoom Styling
-                                style={{ objectFit: (isFullscreen && isZoomed) ? 'cover' : 'contain' }}
                             >
                                 <source
                                     src={`${configaruration.BASE_URL}/user/stream/${contentId}?season=${seasonIndex}&episode=${episodeIndex}`}
@@ -510,11 +538,22 @@ function ContentPlayer() {
                                 Your browser does not support the video tag.
                             </video>
 
-                            {/* 2X Speed Badge Indicator */}
+                            {/* 2X Speed Badge */}
                             {showSpeedBadge && (
                                 <div className="speed-badge">
                                     <span>2x Speed</span>
                                     <i className="bi bi-chevron-double-right"></i>
+                                </div>
+                            )}
+
+                            {/* VLC Style Volume/Brightness Indicators */}
+                            {gestureInfo && (
+                                <div className="gesture-indicator">
+                                    <i className={`bi ${gestureInfo.type === 'volume' ? (gestureInfo.value === 0 ? 'bi-volume-mute-fill' : 'bi-volume-up-fill') : 'bi-brightness-high-fill'}`}></i>
+                                    <div className="gesture-bar-bg">
+                                        <div className="gesture-bar-fill" style={{ width: `${gestureInfo.value * 100}%` }}></div>
+                                    </div>
+                                    <span>{Math.round(gestureInfo.value * 100)}%</span>
                                 </div>
                             )}
 
@@ -524,6 +563,7 @@ function ContentPlayer() {
                                 </div>
                             )}
 
+                            {/* Seek Animations */}
                             <div className={`seek-ripple-overlay left ${seekAnimation === 'backward' ? 'animate' : ''}`}>
                                 <div className="ripple-circle"></div>
                                 <div className="seek-content">
@@ -555,7 +595,7 @@ function ContentPlayer() {
                             </div>
 
                             <div className="custom-controls">
-                                <div className="progress-container" ref={progressRef} onMouseDown={handleProgressMouseDown} onTouchStart={handleProgressMouseDown}>
+                                <div className="progress-container" ref={progressRef} onMouseDown={(e) => { setIsDraggingProgress(true); handleProgressScrub(e); }} onTouchStart={(e) => { setIsDraggingProgress(true); handleProgressScrub(e); }}>
                                     <div className="progress-bar" style={{ width: '100%', height: '100%', position: 'relative' }}>
                                         <div className="progress-filled" style={{ width: `${progressPercentage}%` }}></div>
                                         <div className="progress-thumb" style={{ left: `${progressPercentage}%` }}></div>
@@ -580,7 +620,7 @@ function ContentPlayer() {
                                                 <i className={`bi ${isMuted || volume === 0 ? 'bi-volume-mute-fill' : volume < 0.5 ? 'bi-volume-down-fill' : 'bi-volume-up-fill'}`}></i>
                                             </button>
                                             <div className="volume-slider-container">
-                                                <div className="volume-slider" ref={volumeRef} onMouseDown={handleVolumeMouseDown} onTouchStart={handleVolumeMouseDown}>
+                                                <div className="volume-slider" ref={volumeRef} onMouseDown={(e) => { setIsDraggingVolume(true); handleVolumeScrub(e); }} onTouchStart={(e) => { setIsDraggingVolume(true); handleVolumeScrub(e); }}>
                                                     <div className="volume-filled" style={{ width: `${volumePercentage}%` }}></div>
                                                     <div className="volume-thumb" style={{ left: `${volumePercentage}%` }}></div>
                                                 </div>
@@ -593,16 +633,19 @@ function ContentPlayer() {
                                     </div>
 
                                     <div className="controls-right">
-                                        <button className="control-text-btn" onClick={changePlaybackRate}>
-                                            {playbackRate}x
-                                        </button>
+                                        <button className="control-text-btn" onClick={changePlaybackRate}>{playbackRate}x</button>
                                         <button
                                             className="control-btn"
-                                            title="Subtitles"
+                                            title={hasCaptions ? "Subtitles" : "No Subtitles Available"}
                                             onClick={toggleCaptions}
-                                            style={{ color: captionsEnabled ? '#f5b81b' : '' }}
+                                            disabled={!hasCaptions}
+                                            style={{
+                                                color: (captionsEnabled && hasCaptions) ? '#f5b81b' : '',
+                                                opacity: hasCaptions ? 1 : 0.35,
+                                                cursor: hasCaptions ? 'pointer' : 'not-allowed'
+                                            }}
                                         >
-                                            <i className={`bi ${captionsEnabled ? 'bi-badge-cc-fill' : 'bi-badge-cc'}`}></i>
+                                            <i className={`bi ${(captionsEnabled && hasCaptions) ? 'bi-badge-cc-fill' : 'bi-badge-cc'}`}></i>
                                         </button>
                                         <button className="control-btn" onClick={toggleFullscreen}>
                                             <i className={`bi ${isFullscreen ? 'bi-fullscreen-exit' : 'bi-fullscreen'}`}></i>
@@ -612,6 +655,7 @@ function ContentPlayer() {
                             </div>
                         </div>
 
+                        {/* Series Details Unchanged... */}
                         <div className="series-content-box mt-4">
                             <div className="d-flex justify-content-between flex-wrap gap-3 mb-4">
                                 <div>
@@ -634,9 +678,7 @@ function ContentPlayer() {
                                 </div>
                             </div>
 
-                            <p className="series-description">
-                                {contentData?.description || 'Lorem ipsum dolor sit amet...'}
-                            </p>
+                            <p className="series-description">{contentData?.description || 'Lorem ipsum dolor sit amet...'}</p>
 
                             <div className="episode-wrapper mt-4" style={{ display: contentData?.contentType === 'series' ? 'block' : 'none' }}>
                                 <h4 className="episode-heading mb-3">Episodes</h4>
