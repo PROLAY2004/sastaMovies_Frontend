@@ -89,7 +89,7 @@ function MovieCards(cardDetails) {
                                                 className="spinner-border"
                                                 role="status"
                                                 style={{ width: '20px', height: '20px' }}></div>{' '}
-                                            Loading...
+                                            <span className="d-none d-sm-block align-items-center"> Saving...</span>
                                         </>
                                     ) : (
                                         <>
@@ -106,7 +106,7 @@ function MovieCards(cardDetails) {
                                                 className="spinner-border"
                                                 role="status"
                                                 style={{ width: '20px', height: '20px' }}></div>{' '}
-                                            Removing...
+                                            <span className="d-none d-sm-block align-items-center"> Removing...</span>
                                         </>
                                     ) : (
                                         <>

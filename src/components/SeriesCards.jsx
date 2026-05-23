@@ -89,8 +89,9 @@ function SeriesCards(cardDetails) {
                                             <div
                                                 className="spinner-border"
                                                 role="status"
-                                                style={{ width: '20px', height: '20px' }}></div>{' '}
-                                            Loading...
+                                                style={{ width: '20px', height: '20px' }}></div>
+                                            <span className="d-none d-sm-block align-items-center"> Loading...</span>
+                                            
                                         </>
                                     ) : (
                                         <>
@@ -107,7 +108,7 @@ function SeriesCards(cardDetails) {
                                                 className="spinner-border"
                                                 role="status"
                                                 style={{ width: '20px', height: '20px' }}></div>{' '}
-                                            Removing...
+                                            <span className="d-none d-sm-block align-items-center"> Removing...</span>
                                         </>
                                     ) : (
                                         <>
