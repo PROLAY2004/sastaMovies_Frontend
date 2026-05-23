@@ -24,40 +24,46 @@ function ContentPlayer() {
     const clickTimeoutRef = useRef(null);
     const seekTimeoutRef = useRef(null);
 
+    // New Refs for Hold & Pinch Gestures
+    const holdTimeoutRef = useRef(null);
+    const isHoldingRef = useRef(false);
+    const ignoreNextClickRef = useRef(false);
+    const initialPinchDistRef = useRef(null);
+
     // ==========================================
     // 2. STATE
     // ==========================================
-    // Data State
     const [loading, setLoading] = useState(true);
     const [contentData, setContentData] = useState({});
     const [episodes, setEpisodes] = useState([]);
     const [seasonIndex, setSeasonIndex] = useState(0);
     const [episodeIndex, setEpisodeIndex] = useState(0);
 
-    // Player State
     const [isPlaying, setIsPlaying] = useState(false);
     const [isVideoBuffering, setIsVideoBuffering] = useState(true);
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
-    const [volume, setVolume] = useState(1); // Range: 0 to 1
+    const [volume, setVolume] = useState(1);
     const [isMuted, setIsMuted] = useState(false);
     const [playbackRate, setPlaybackRate] = useState(1);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [captionsEnabled, setCaptionsEnabled] = useState(false);
     const [seekAnimation, setSeekAnimation] = useState(null);
 
-    // UI & Interaction State
     const [isIdle, setIsIdle] = useState(false);
     const [showVolumeUI, setShowVolumeUI] = useState(false);
     const [isDraggingProgress, setIsDraggingProgress] = useState(false);
     const [isDraggingVolume, setIsDraggingVolume] = useState(false);
+
+    // New States for Advanced UI
+    const [showSpeedBadge, setShowSpeedBadge] = useState(false);
+    const [isZoomed, setIsZoomed] = useState(false);
 
     // ==========================================
     // 3. DATA FETCHING
     // ==========================================
     useEffect(() => {
         window.scrollTo(0, 0);
-
         const fetchContent = async () => {
             const isSuccess = await displayPlayer(navigate, toast, contentId);
             if (isSuccess) {
@@ -78,14 +84,12 @@ function ContentPlayer() {
     // 4. TIMERS & HELPERS
     // ==========================================
     const getClientX = (e) => {
-        // If it's a touch event, grab the first finger's position. Otherwise, grab the mouse position.
         return e.touches && e.touches.length > 0 ? e.touches[0].clientX : e.clientX;
     };
-    
+
     const resetIdleTimer = () => {
         setIsIdle(false);
         if (idleTimeoutRef.current) clearTimeout(idleTimeoutRef.current);
-
         idleTimeoutRef.current = setTimeout(() => {
             if (videoRef.current && !videoRef.current.paused) {
                 setIsIdle(true);
@@ -101,7 +105,6 @@ function ContentPlayer() {
     const triggerVolumeUI = () => {
         setShowVolumeUI(true);
         if (volumeTimeoutRef.current) clearTimeout(volumeTimeoutRef.current);
-
         volumeTimeoutRef.current = setTimeout(() => {
             setShowVolumeUI(false);
         }, 2000);
@@ -121,17 +124,44 @@ function ContentPlayer() {
             : `${formattedMinutes}:${formattedSeconds}`;
     };
 
+    // --- NEW: HOLD TO 2x LOGIC ---
+    const startHoldTimer = () => {
+        if (playbackRate === 2) return; // Only apply if not already 2x
+        if (videoRef.current && !videoRef.current.paused) {
+            // Require a 400ms hold to activate
+            holdTimeoutRef.current = setTimeout(() => {
+                isHoldingRef.current = true;
+                videoRef.current.playbackRate = 2;
+                setShowSpeedBadge(true);
+            }, 400);
+        }
+    };
+
+    const endHoldTimer = () => {
+        if (holdTimeoutRef.current) {
+            clearTimeout(holdTimeoutRef.current);
+            holdTimeoutRef.current = null;
+        }
+        if (isHoldingRef.current) {
+            isHoldingRef.current = false;
+            if (videoRef.current) {
+                videoRef.current.playbackRate = 1; // Revert strictly to 1x
+                setPlaybackRate(1);
+            }
+            setShowSpeedBadge(false);
+            return true; // Returns true if we were actively holding
+        }
+        return false;
+    };
+
     // ==========================================
     // 5. PLAYER CONTROLS
     // ==========================================
     const togglePlay = () => {
         if (videoRef.current.paused) {
-            // Force spinner to show immediately upon clicking
             setIsVideoBuffering(true);
             setIsPlaying(true);
-
             videoRef.current.play().catch((err) => {
-                // If the browser blocks playback, hide spinner and reset play state
                 setIsVideoBuffering(false);
                 setIsPlaying(false);
                 console.warn("Playback prevented:", err);
@@ -143,26 +173,20 @@ function ContentPlayer() {
     };
 
     const handleVideoClick = (e) => {
-        // Grab the click's X coordinate and the video's total width
+        // If we just released a "Hold to 2x", intercept the click so it doesn't pause the video
+        if (ignoreNextClickRef.current) return;
+
         const rect = e.target.getBoundingClientRect();
         const clientX = e.clientX;
 
         if (clickTimeoutRef.current) {
-            // A timer is running, meaning this is the SECOND tap (Double Tap!)
             clearTimeout(clickTimeoutRef.current);
             clickTimeoutRef.current = null;
-
-            // Check if clicked on the right half or left half of the screen
             const isRightSide = clientX > rect.left + (rect.width / 2);
 
-            if (isRightSide) {
-                skip(10); // Forward 10s
-            } else {
-                skip(-10); // Backward 10s
-            }
+            if (isRightSide) skip(10);
+            else skip(-10);
         } else {
-            // First tap: Start a 250ms timer. 
-            // If they don't tap again, it triggers a normal play/pause.
             clickTimeoutRef.current = setTimeout(() => {
                 togglePlay();
                 clickTimeoutRef.current = null;
@@ -173,15 +197,10 @@ function ContentPlayer() {
     const skip = (time) => {
         if (videoRef.current) {
             videoRef.current.currentTime += time;
-
-            // Trigger the animation
             const direction = time > 0 ? 'forward' : 'backward';
             setSeekAnimation(direction);
 
-            // Clear any existing animation timer so it resets if they tap quickly multiple times
             if (seekTimeoutRef.current) clearTimeout(seekTimeoutRef.current);
-
-            // Hide the animation after 600ms
             seekTimeoutRef.current = setTimeout(() => {
                 setSeekAnimation(null);
             }, 600);
@@ -204,12 +223,8 @@ function ContentPlayer() {
     const toggleFullscreen = () => {
         if (!document.fullscreenElement) {
             playerContainerRef.current.requestFullscreen().then(() => {
-                // Try to lock the screen to landscape for mobile devices
                 if (window.screen && window.screen.orientation && window.screen.orientation.lock) {
-                    window.screen.orientation.lock('landscape').catch((err) => {
-                        // Some browsers/devices don't support this, so we silently catch the error
-                        console.warn("Screen orientation lock not supported:", err);
-                    });
+                    window.screen.orientation.lock('landscape').catch(() => { });
                 }
             }).catch(err => {
                 toast.error(`Fullscreen Error: ${err.message}`);
@@ -278,7 +293,6 @@ function ContentPlayer() {
     // ==========================================
     // 7. GLOBAL EVENT LISTENERS
     // ==========================================
-    // Dragging Listeners
     useEffect(() => {
         const handleMove = (e) => {
             if (isDraggingProgress) handleProgressScrub(e);
@@ -290,30 +304,13 @@ function ContentPlayer() {
         };
 
         if (isDraggingProgress || isDraggingVolume) {
-            // Mouse Events
             document.addEventListener('mousemove', handleMove);
             document.addEventListener('mouseup', handleEnd);
-            // Touch Events
             document.addEventListener('touchmove', handleMove, { passive: false });
             document.addEventListener('touchend', handleEnd);
         }
 
-        const handleMouseMove = (e) => {
-            if (isDraggingProgress) handleProgressScrub(e);
-            if (isDraggingVolume) handleVolumeScrub(e);
-        };
-        const handleMouseUp = () => {
-            setIsDraggingProgress(false);
-            setIsDraggingVolume(false);
-        };
-
-        if (isDraggingProgress || isDraggingVolume) {
-            document.addEventListener('mousemove', handleMouseMove);
-            document.addEventListener('mouseup', handleMouseUp);
-        }
         return () => {
-            document.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('mouseup', handleMouseUp);
             document.removeEventListener('mousemove', handleMove);
             document.removeEventListener('mouseup', handleEnd);
             document.removeEventListener('touchmove', handleMove);
@@ -321,7 +318,7 @@ function ContentPlayer() {
         };
     }, [isDraggingProgress, isDraggingVolume, duration]);
 
-    // Keyboard Shortcuts
+    // Keyboard Shortcuts (Including Spacebar Hold)
     useEffect(() => {
         const handleKeyDown = (e) => {
             if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
@@ -329,14 +326,17 @@ function ContentPlayer() {
             }
             resetIdleTimer();
 
+            // Handle Spacebar exclusively here to allow "holding" 
+            if (e.code === 'Space') {
+                if (e.repeat) return; // Prevent OS auto-repeat from going crazy
+                startHoldTimer();
+                return;
+            }
+
             switch (e.key.toLowerCase()) {
-                case ' ':
-                case 'k':
-                    togglePlay(); break;
-                case 'arrowleft':
-                    skip(-10); break;
-                case 'arrowright':
-                    skip(10); break;
+                case 'k': togglePlay(); break;
+                case 'arrowleft': skip(-10); break;
+                case 'arrowright': skip(10); break;
                 case 'arrowup':
                     if (videoRef.current) {
                         const newVol = Math.min(1, videoRef.current.volume + 0.1);
@@ -355,20 +355,31 @@ function ContentPlayer() {
                         triggerVolumeUI();
                     }
                     break;
-                case 'f':
-                    toggleFullscreen(); break;
-                case 'c':
-                    toggleCaptions(); break;
-                case 'm':
-                    toggleMute(); break;
-                default:
-                    break;
+                case 'f': toggleFullscreen(); break;
+                case 'c': toggleCaptions(); break;
+                case 'm': toggleMute(); break;
+                default: break;
+            }
+        };
+
+        const handleKeyUp = (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                const wasHolding = endHoldTimer();
+                // If it was just a quick tap (timer didn't finish), toggle play!
+                if (!wasHolding) {
+                    togglePlay();
+                }
             }
         };
 
         document.addEventListener('keydown', handleKeyDown);
-        return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [isMuted, volume, isFullscreen]);
+        document.addEventListener('keyup', handleKeyUp);
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+            document.removeEventListener('keyup', handleKeyUp);
+        };
+    }, [isMuted, volume, isFullscreen, playbackRate]);
 
     // Fullscreen Listener
     useEffect(() => {
@@ -376,9 +387,12 @@ function ContentPlayer() {
             const isFs = !!document.fullscreenElement;
             setIsFullscreen(isFs);
 
-            // If we just exited fullscreen, unlock the screen rotation
-            if (!isFs && window.screen && window.screen.orientation && window.screen.orientation.unlock) {
-                window.screen.orientation.unlock();
+            if (!isFs) {
+                // Unlock orientation and reset zoom if exiting fullscreen
+                if (window.screen && window.screen.orientation && window.screen.orientation.unlock) {
+                    window.screen.orientation.unlock();
+                }
+                setIsZoomed(false);
             }
         };
 
@@ -406,7 +420,6 @@ function ContentPlayer() {
                 <div className="player-layout">
                     <div className="video-section">
 
-                        {/* --- CUSTOM VIDEO PLAYER --- */}
                         <div
                             className={`custom-player-wrapper ${isIdle ? 'is-idle' : ''} ${!isPlaying ? 'is-paused' : ''}`}
                             onMouseMove={resetIdleTimer}
@@ -424,11 +437,63 @@ function ContentPlayer() {
                                 onTimeUpdate={handleTimeUpdate}
                                 onLoadedMetadata={handleLoadedMetadata}
                                 onEnded={() => setIsPlaying(false)}
-                                
+                                onContextMenu={(e) => e.preventDefault()}
                                 onLoadStart={() => setIsVideoBuffering(true)}
                                 onWaiting={() => setIsVideoBuffering(true)}
                                 onPlaying={() => setIsVideoBuffering(false)}
-                                onCanPlay={() => setIsVideoBuffering(false)}
+                                onCanPlay={() => {
+                                    if (videoRef.current && videoRef.current.paused) {
+                                        setIsVideoBuffering(false);
+                                    }
+                                }}
+
+                                // --- MOBILE TOUCH & HOLD EVENTS ---
+                                onPointerDown={(e) => {
+                                    if (!e.isPrimary) return; // Only process the first finger
+                                    startHoldTimer();
+                                }}
+                                onPointerUp={() => {
+                                    if (endHoldTimer()) {
+                                        // Ignore the incoming onClick event if we were just holding
+                                        ignoreNextClickRef.current = true;
+                                        setTimeout(() => ignoreNextClickRef.current = false, 150);
+                                    }
+                                }}
+                                onPointerLeave={() => endHoldTimer()}
+                                onPointerCancel={() => endHoldTimer()}
+
+                                // --- PINCH TO ZOOM EVENTS ---
+                                onTouchStart={(e) => {
+                                    if (e.touches.length === 2 && isFullscreen && isPlaying) {
+                                        const dist = Math.hypot(
+                                            e.touches[0].clientX - e.touches[1].clientX,
+                                            e.touches[0].clientY - e.touches[1].clientY
+                                        );
+                                        initialPinchDistRef.current = dist;
+                                    }
+                                }}
+                                onTouchMove={(e) => {
+                                    if (e.touches.length === 2 && initialPinchDistRef.current && isFullscreen && isPlaying) {
+                                        const dist = Math.hypot(
+                                            e.touches[0].clientX - e.touches[1].clientX,
+                                            e.touches[0].clientY - e.touches[1].clientY
+                                        );
+                                        // 40px threshold makes it feel intentional and less jittery
+                                        if (dist > initialPinchDistRef.current + 40) {
+                                            setIsZoomed(true); // Zoom In
+                                        } else if (dist < initialPinchDistRef.current - 40) {
+                                            setIsZoomed(false); // Zoom Out
+                                        }
+                                    }
+                                }}
+                                onTouchEnd={(e) => {
+                                    if (e.touches.length < 2) {
+                                        initialPinchDistRef.current = null;
+                                    }
+                                }}
+
+                                // Dynamic Zoom Styling
+                                style={{ objectFit: (isFullscreen && isZoomed) ? 'cover' : 'contain' }}
                             >
                                 <source
                                     src={`${configaruration.BASE_URL}/user/stream/${contentId}?season=${seasonIndex}&episode=${episodeIndex}`}
@@ -444,6 +509,14 @@ function ContentPlayer() {
                                 )}
                                 Your browser does not support the video tag.
                             </video>
+
+                            {/* 2X Speed Badge Indicator */}
+                            {showSpeedBadge && (
+                                <div className="speed-badge">
+                                    <span>2x Speed</span>
+                                    <i className="bi bi-chevron-double-right"></i>
+                                </div>
+                            )}
 
                             {isVideoBuffering && (
                                 <div className="video-spinner-overlay">
@@ -475,16 +548,13 @@ function ContentPlayer() {
                                 </div>
                             </div>
 
-                            {/* Center Play Button (Hidden if playing OR if actively buffering) */}
                             <div className={`center-play-overlay ${(isPlaying || isVideoBuffering) ? 'is-playing' : ''}`} onClick={togglePlay}>
                                 <button className="center-play-btn">
                                     <i className="bi bi-play-fill"></i>
                                 </button>
                             </div>
 
-                            {/* Bottom Control Bar */}
                             <div className="custom-controls">
-                                {/* Progress Timeline */}
                                 <div className="progress-container" ref={progressRef} onMouseDown={handleProgressMouseDown} onTouchStart={handleProgressMouseDown}>
                                     <div className="progress-bar" style={{ width: '100%', height: '100%', position: 'relative' }}>
                                         <div className="progress-filled" style={{ width: `${progressPercentage}%` }}></div>
@@ -542,20 +612,14 @@ function ContentPlayer() {
                             </div>
                         </div>
 
-                        {/* --- CONTENT DETAILS --- */}
                         <div className="series-content-box mt-4">
                             <div className="d-flex justify-content-between flex-wrap gap-3 mb-4">
                                 <div>
-                                    <h1 className="series-title mb-2">
-                                        {contentData?.title || 'Content Title'}
-                                    </h1>
-                                    <p className="series-subtitle mb-0">
-                                        {contentData?.genre?.join(' • ') || 'Genre'}
-                                    </p>
+                                    <h1 className="series-title mb-2">{contentData?.title || 'Content Title'}</h1>
+                                    <p className="series-subtitle mb-0">{contentData?.genre?.join(' • ') || 'Genre'}</p>
                                 </div>
 
                                 <div className="season-dropdown" style={{ display: contentData?.contentType === 'series' ? 'block' : 'none' }}>
-                                    {/* <label className="dropdown-label">Season</label> */}
                                     <select
                                         value={seasonIndex}
                                         onChange={(e) => {
@@ -571,7 +635,7 @@ function ContentPlayer() {
                             </div>
 
                             <p className="series-description">
-                                {contentData?.description || 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.'}
+                                {contentData?.description || 'Lorem ipsum dolor sit amet...'}
                             </p>
 
                             <div className="episode-wrapper mt-4" style={{ display: contentData?.contentType === 'series' ? 'block' : 'none' }}>
@@ -584,7 +648,7 @@ function ContentPlayer() {
                                                 setEpisodeIndex(index);
                                                 setIsPlaying(false);
                                                 setCurrentTime(0);
-                                                setIsVideoBuffering(true); // <-- Add this to force spinner immediately
+                                                setIsVideoBuffering(true);
                                             }}
                                             className={`episode-btn ${episodeIndex === index ? 'active' : ''}`}>
                                             EP {index + 1}
@@ -595,7 +659,6 @@ function ContentPlayer() {
                         </div>
                     </div>
 
-                    {/* --- SIDEBAR BANNER --- */}
                     <ImdbCard contentData={contentData} />
                 </div>
             </div>
