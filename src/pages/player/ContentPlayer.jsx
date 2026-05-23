@@ -544,7 +544,7 @@ function ContentPlayer() {
 
                         {/* --- CONTENT DETAILS --- */}
                         <div className="series-content-box mt-4">
-                            <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+                            <div className="d-flex justify-content-between flex-wrap gap-3 mb-4">
                                 <div>
                                     <h1 className="series-title mb-2">
                                         {contentData?.title || 'Content Title'}
@@ -555,7 +555,7 @@ function ContentPlayer() {
                                 </div>
 
                                 <div className="season-dropdown" style={{ display: contentData?.contentType === 'series' ? 'block' : 'none' }}>
-                                    <label className="dropdown-label">Season</label>
+                                    {/* <label className="dropdown-label">Season</label> */}
                                     <select
                                         value={seasonIndex}
                                         onChange={(e) => {
