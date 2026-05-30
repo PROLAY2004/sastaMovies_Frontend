@@ -63,15 +63,6 @@ function Home() {
 								</select>
 							</div>
 
-							<div className="filter-item">
-								<label className="filter-label">Quality</label>
-								<select className="filter-select" id="qualityFilter">
-									<option value="all">All Quality</option>
-									<option value="4K">4K Ultra HD</option>
-									<option value="HD">HD</option>
-								</select>
-							</div>
-
 							<div className="filter-buttons">
 								<button className="btn-filter" id="applyFiltersBtn">
 									Apply Filters
@@ -82,18 +73,18 @@ function Home() {
 							</div>
 						</div>
 
-						<div className="active-filters" id="activeFilters"></div>
+						<div className="active-filters"></div>
 					</div>
 
 					<div className="results-count">
 						<div className="count-text">
-							<span className="count-number" id="movieCount">
+							<span className="count-number">
 								0
 							</span>{' '}
 							movies found
 						</div>
 						<div>
-							<select className="sort-select" id="sortSelect">
+							<select className="sort-select">
 								<option value="default">Sort by: Featured</option>
 								<option value="rating">Sort by: Rating (High to Low)</option>
 								<option value="year">Sort by: Year (Newest First)</option>
@@ -102,9 +93,11 @@ function Home() {
 						</div>
 					</div>
 
-					<div className="row g-4" id="moviesGrid"></div>
+					<div className="row g-4">
+						
+					</div>
 
-					<div id="noResultsTemplate">
+					<div className='mt-4'>
 						<div className="no-results">
 							<i className="bi bi-film"></i>
 							<h3>No movies found</h3>
