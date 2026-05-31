@@ -10,7 +10,7 @@ import HeroSection from '../../components/HeroSection.jsx';
 import MovieCards from '../../components/MovieCards.jsx';
 import SeriesCards from '../../components/SeriesCards.jsx';
 import displayHome from './fetchHome.js';
-import LoginRequiredModal from '../../components/LoginRequiredModal.jsx';
+import LoginRequiredModal from '../../components/modals/LoginRequiredModal.jsx';
 
 function Home() {
 	const navigate = useNavigate();
