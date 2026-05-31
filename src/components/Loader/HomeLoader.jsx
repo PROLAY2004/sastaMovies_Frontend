@@ -27,67 +27,24 @@ function HomeLoader({ loading }) {
                     </div>
                 </div>
 
-                {/* MOVIES */}
-                <div className="container py-3">
-                    <div className="section-header">
-                        <div className="skeleton skeleton-section-title"></div>
-                        <div className="skeleton skeleton-link"></div>
-                    </div>
+                {[1, 2].map((sectionIndex) => (
+                    <div className="container px-4 py-4" key={sectionIndex}>
+                        <div className="d-flex justify-content-between align-items-end mb-4">
+                            <div className="skeleton" style={{ width: '150px', height: '24px' }}></div>
+                            <div className="skeleton" style={{ width: '50px', height: '16px' }}></div>
+                        </div>
 
-                    <div className="row g-4">
-                        {[...Array(8)].map((_, index) => (
-                            <div
-                                className="col-6 col-sm-6 col-md-4 col-lg-3"
-                                key={index}>
-                                <div className="movie-card skeleton-card">
-                                    <div className="skeleton skeleton-card-img"></div>
-
-                                    <div className="card-body">
-                                        <div className="skeleton skeleton-card-title"></div>
-
-                                        <div className="skeleton skeleton-card-meta"></div>
-
-                                        <div className="card-buttons">
-                                            <div className="skeleton skeleton-card-btn"></div>
-                                            <div className="skeleton skeleton-card-btn small"></div>
-                                        </div>
-                                    </div>
+                        <div className="row g-4">
+                            {[...Array(6)].map((_, index) => (
+                                <div className="col-6 col-sm-4 col-md-3 col-lg-2" key={index}>
+                                    <div style={{ aspectRatio: '2/3', background: '#111', borderRadius: '8px', marginBottom: '12px' }} className="skeleton"></div>
+                                    <div className="skeleton mb-2" style={{ width: '80%', height: '14px' }}></div>
+                                    <div className="skeleton" style={{ width: '40%', height: '12px' }}></div>
                                 </div>
-                            </div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
-                </div>
-
-                {/* SERIES */}
-                <div className="container py-3">
-                    <div className="section-header">
-                        <div className="skeleton skeleton-section-title"></div>
-                        <div className="skeleton skeleton-link"></div>
-                    </div>
-
-                    <div className="row g-4">
-                        {[...Array(4)].map((_, index) => (
-                            <div
-                                className="col-6 col-sm-6 col-md-4 col-lg-3"
-                                key={index}>
-                                <div className="movie-card skeleton-card">
-                                    <div className="skeleton skeleton-card-img"></div>
-
-                                    <div className="card-body">
-                                        <div className="skeleton skeleton-card-title"></div>
-
-                                        <div className="skeleton skeleton-card-meta"></div>
-
-                                        <div className="card-buttons">
-                                            <div className="skeleton skeleton-card-btn"></div>
-                                            <div className="skeleton skeleton-card-btn small"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
+                ))}
 
                 {/* CTA */}
                 <div className="container my-5">
