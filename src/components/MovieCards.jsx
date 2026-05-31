@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useState, useEffect } from 'react';
 
@@ -14,8 +14,7 @@ function MovieCards(cardDetails) {
     const handleWatch = () => {
         if (!isAuthenticated()) {
             cardDetails.LoginRequiredModal(true);
-        }
-        else {
+        } else {
             navigate(`/player/${cardDetails.movie?._id}`);
         }
     }
@@ -23,35 +22,26 @@ function MovieCards(cardDetails) {
     const userFetch = async () => {
         if (isAuthenticated()) {
             const userDetails = await getUser(navigate, toast);
-
             if (userDetails.user.savedContents?.includes(cardDetails.movie?._id)) {
                 setBtnDisplay(false);
-            }
-            else {
+            } else {
                 setBtnDisplay(true);
             }
         }
     }
 
-    const handleSet = async (contentId) => {
+    const handleSet = async (e, contentId) => {
+        e.stopPropagation(); // Prevents clicking the card background
         setLoading(true);
-
         if (!isAuthenticated()) {
-            toast.error('Please Login to save Content', {
-                position: 'top-right',
-                autoClose: 5000,
-                theme: 'dark',
-            });
-        }
-        else {
+            toast.error('Please log in to save.', { position: 'top-right', theme: 'dark' });
+        } else {
             const isSuccess = await setContent(navigate, toast, contentId)
-
             if (isSuccess) {
                 setBtnDisplay(!btnDisplay);
                 cardDetails.refresh((prev) => prev + 1)
             }
         }
-
         setLoading(false);
     }
 
@@ -60,63 +50,34 @@ function MovieCards(cardDetails) {
     }, [cardDetails.movie?._id, cardDetails.pageReload])
 
     return (
-        <div className="col-6 col-sm-6 col-md-4 col-lg-3">
-            <div className="movie-card">
-                <img src={cardDetails.movie?.posterUrl?.vertical || 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR6pdTz5L8m-BnQaPfYvrKXSpvTxri_DDtSqw&s'} className="card-img-top" alt="${item.title}" loading="lazy" />
-                <div className="card-body">
-                    <h5 className="card-title text-truncate">{cardDetails.movie?.title}</h5>
-                    <div className="card-info-row">
-                        <div className="rating-hd-group d-flex gap-3 w-100 justify-content-between">
-                            <div>
-                                <span className="hd-icon me-2">HD</span>
-                                <span className="card-year">{cardDetails.movie?.release?.slice(-4) || 'Year'}</span>
-                            </div>
-                            {cardDetails.movie?.rating}
-                        </div>
+        <div className="col-6 col-sm-4 col-md-3 col-lg-2">
+            <div className="movie-card" onClick={handleWatch}>
+                <div className="card-img-wrapper">
+                    <img
+                        src={cardDetails.movie?.posterUrl?.vertical || 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR6pdTz5L8m-BnQaPfYvrKXSpvTxri_DDtSqw&s'}
+                        className="card-img-top"
+                        alt={cardDetails.movie?.title}
+                        loading="lazy"
+                    />
+                    <div className="hover-play-btn">
+                        <i className="bi bi-play-fill ps-1"></i>
                     </div>
-                    <div className="card-buttons">
-                        <button className="btn-watch-sm watch-now-btn" onClick={handleWatch}>
-                            <i className="bi bi-play-fill"></i>
-                            Watch
-                        </button>
+                </div>
 
-                        {
-                            btnDisplay ? (
-                                <button className="btn-later-sm watch-later-btn" disabled={loading} onClick={() => handleSet(cardDetails.movie?._id)}>
-                                    {loading ? (
-                                        <>
-                                            <div
-                                                className="spinner-border"
-                                                role="status"
-                                                style={{ width: '20px', height: '20px' }}></div>{' '}
-                                            <span className="d-none d-sm-block align-items-center"> Saving...</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <i className="bi bi-bookmark"></i>
-                                            <span className="d-none d-sm-block align-items-center">Later</span>
-                                        </>
-                                    )}
-                                </button>
-                            ) : (
-                                <button className="btn-later-sm watch-later-btn" disabled={loading} onClick={() => handleSet(cardDetails.movie?._id)}>
-                                    {loading ? (
-                                        <>
-                                            <div
-                                                className="spinner-border"
-                                                role="status"
-                                                style={{ width: '20px', height: '20px' }}></div>{' '}
-                                            <span className="d-none d-sm-block align-items-center"> Removing...</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <i className="bi bi-bookmark-fill"></i>
-                                            <span className="d-none d-sm-block align-items-center">Saved</span>
-                                        </>
-                                    )}
-                                </button>
-                            )
-                        }
+                <div className="card-body">
+                    <div className="card-header-row">
+                        <h5 className="card-title">{cardDetails.movie?.title}</h5>
+                        <button className={`action-save-btn ${!btnDisplay ? 'saved' : ''}`} disabled={loading} onClick={(e) => handleSet(e, cardDetails.movie?._id)} title="Save to list">
+                            {loading ? <span className="spinner-border spinner-border-sm"></span> : <i className={btnDisplay ? "bi bi-bookmark" : "bi bi-bookmark-fill"}></i>}
+                        </button>
+                    </div>
+                    <div className="card-info-row">
+                        <span>{cardDetails.movie?.release?.slice(-4) || 'Year'}</span>
+                        <span>•</span>
+                        <span className="rating-badge">
+                            <i className="bi bi-star-fill text-warning" style={{ fontSize: '0.7rem' }}></i>
+                            {cardDetails.movie?.rating || 'N/A'}
+                        </span>
                     </div>
                 </div>
             </div>
