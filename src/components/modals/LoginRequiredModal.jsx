@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import '../styles/common/modal.scss';
+import '../../styles/common/modal.scss';
 
 function LoginRequiredModal({ show, onClose }) {
     const navigate = useNavigate();

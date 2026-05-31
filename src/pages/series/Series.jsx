@@ -69,15 +69,6 @@ function Home() {
 								</select>
 							</div>
 
-							<div className="filter-item">
-								<label className="filter-label">Quality</label>
-								<select className="filter-select" id="qualityFilter">
-									<option value="all">All Quality</option>
-									<option value="4K">4K Ultra HD</option>
-									<option value="HD">HD</option>
-								</select>
-							</div>
-
 							<div className="filter-buttons">
 								<button className="btn-filter" id="applyFiltersBtn">
 									Apply Filters
@@ -111,7 +102,7 @@ function Home() {
 
 					<div className="row g-4" id="seriesGrid"></div>
 
-					<div id="noResultsTemplate">
+					<div className='mt-4'>
 						<div className="no-results">
 							<i className="bi bi-tv"></i>
 							<h3>No series found</h3>
