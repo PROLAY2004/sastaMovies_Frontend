@@ -1,8 +1,106 @@
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
+
 import '../../styles/movie.scss';
 import Nav from '../../components/Navbar.jsx';
 import Footer from '../../components/Footer.jsx';
+import displayMovies from './fetchMovies.js';
+import MovieCards from '../../components/MovieCards.jsx';
+import LoginRequiredModal from '../../components/LoginRequiredModal.jsx';
+import MovieLoader from '../../components/Loader/movieLoader.jsx';
 
-function Home() {
+function Movies() {
+	const navigate = useNavigate();
+
+	// Movie List States
+	const [movies, setMovies] = useState([]);
+	const [isEmpty, setIsEmpty] = useState(false);
+	const [loading, setLoading] = useState(true);
+	const [showLoginModal, setShowLoginModal] = useState(false);
+	const [pageReload, setPageReload] = useState(0);
+
+	// Dynamic Dropdown Options (fetched from DB)
+	const [filterOptions, setFilterOptions] = useState({ genres: [], years: [], ratings: [] });
+
+	// Pending UI Selections (wait for "Apply" button)
+	const [selectedGenre, setSelectedGenre] = useState('all');
+	const [selectedYear, setSelectedYear] = useState('all');
+	const [selectedRating, setSelectedRating] = useState('all');
+
+	// Live Inputs (Search & Sort apply immediately)
+	const [searchInput, setSearchInput] = useState('');
+
+	// Active Filters sent to API
+	const [activeFilters, setActiveFilters] = useState({
+		searchQuery: '',
+		genre: 'all',
+		year: 'all',
+		rating: 'all',
+		sortBy: 'default'
+	});
+
+	const handleDisplay = async () => {
+		setLoading(true);
+		const isSuccess = await displayMovies(toast, activeFilters);
+
+		if (isSuccess) {
+			setMovies(isSuccess.movies);
+
+			// Populate dynamic dropdowns only on initial fetch so they don't shrink during filtering
+			if (filterOptions.genres.length === 0) {
+				setFilterOptions(isSuccess.options);
+			}
+
+			if (isSuccess.movies.length) {
+				setIsEmpty(false);
+			} else {
+				setIsEmpty(true);
+			}
+		}
+		setLoading(false);
+	};
+
+	// Apply button triggers the filter updates
+	const applyFilters = () => {
+		setActiveFilters(prev => ({
+			...prev,
+			genre: selectedGenre,
+			year: selectedYear,
+			rating: selectedRating
+		}));
+	};
+
+	// Reset button clears everything back to defaults
+	const resetFilters = () => {
+		setSelectedGenre('all');
+		setSelectedYear('all');
+		setSelectedRating('all');
+		setSearchInput('');
+
+		setActiveFilters({
+			searchQuery: '',
+			genre: 'all',
+			year: 'all',
+			rating: 'all',
+			sortBy: 'default'
+		});
+	};
+
+	// Debounce the search input to wait until the user stops typing
+	useEffect(() => {
+		const delaySearch = setTimeout(() => {
+			setActiveFilters(prev => ({ ...prev, searchQuery: searchInput }));
+		}, 500); // Waits 500ms after last keystroke
+
+		return () => clearTimeout(delaySearch);
+	}, [searchInput]);
+
+	// Fetch data whenever activeFilters change
+	useEffect(() => {
+		handleDisplay();
+	}, [activeFilters, pageReload]);
+
 	return (
 		<>
 			<Nav />
@@ -15,59 +113,66 @@ function Home() {
 					</div>
 
 					<div className="filter-section">
+						{/* Real-time search */}
 						<div className="search-wrapper">
 							<i className="bi bi-search search-icon"></i>
 							<input
 								type="text"
 								className="search-input"
-								id="searchInput"
-								placeholder="Search by title, genre, or actor..."
+								placeholder="Search by title, genre..."
+								value={searchInput}
+								onChange={(e) => setSearchInput(e.target.value)}
 							/>
 						</div>
 
 						<div className="filter-group">
 							<div className="filter-item">
 								<label className="filter-label">Genre</label>
-								<select className="filter-select" id="genreFilter">
+								<select
+									className="filter-select"
+									value={selectedGenre}
+									onChange={(e) => setSelectedGenre(e.target.value)}
+								>
 									<option value="all">All Genres</option>
-									<option value="Action">Action</option>
-									<option value="Sci-Fi">Sci-Fi</option>
-									<option value="Drama">Drama</option>
-									<option value="Thriller">Thriller</option>
-									<option value="Cyberpunk">Cyberpunk</option>
-									<option value="Fantasy">Fantasy</option>
-									<option value="Crime">Crime</option>
-									<option value="Adventure">Adventure</option>
+									{filterOptions.genres.map(genre => (
+										<option key={genre} value={genre}>{genre}</option>
+									))}
 								</select>
 							</div>
 
 							<div className="filter-item">
 								<label className="filter-label">Year</label>
-								<select className="filter-select" id="yearFilter">
+								<select
+									className="filter-select"
+									value={selectedYear}
+									onChange={(e) => setSelectedYear(e.target.value)}
+								>
 									<option value="all">All Years</option>
-									<option value="2025">2025</option>
-									<option value="2024">2024</option>
-									<option value="2023">2023</option>
-									<option value="2022">2022</option>
+									{filterOptions.years.map(year => (
+										<option key={year} value={year}>{year}</option>
+									))}
 								</select>
 							</div>
 
 							<div className="filter-item">
 								<label className="filter-label">Rating</label>
-								<select className="filter-select" id="ratingFilter">
+								<select
+									className="filter-select"
+									value={selectedRating}
+									onChange={(e) => setSelectedRating(e.target.value)}
+								>
 									<option value="all">All Ratings</option>
-									<option value="9">9+ Stars</option>
-									<option value="8">8+ Stars</option>
-									<option value="7">7+ Stars</option>
-									<option value="6">6+ Stars</option>
+									{filterOptions.ratings.map(rating => (
+										<option key={rating} value={rating}>{rating}+ Stars</option>
+									))}
 								</select>
 							</div>
 
 							<div className="filter-buttons">
-								<button className="btn-filter" id="applyFiltersBtn">
+								<button className="btn-filter" onClick={applyFilters}>
 									Apply Filters
 								</button>
-								<button className="btn-reset" id="resetFiltersBtn">
+								<button className="btn-reset" onClick={resetFilters}>
 									Reset
 								</button>
 							</div>
@@ -79,12 +184,17 @@ function Home() {
 					<div className="results-count">
 						<div className="count-text">
 							<span className="count-number">
-								0
+								{movies.length}
 							</span>{' '}
 							movies found
 						</div>
 						<div>
-							<select className="sort-select">
+							{/* Real-time Sort */}
+							<select
+								className="sort-select"
+								value={activeFilters.sortBy}
+								onChange={(e) => setActiveFilters(prev => ({ ...prev, sortBy: e.target.value }))}
+							>
 								<option value="default">Sort by: Featured</option>
 								<option value="rating">Sort by: Rating (High to Low)</option>
 								<option value="year">Sort by: Year (Newest First)</option>
@@ -94,10 +204,20 @@ function Home() {
 					</div>
 
 					<div className="row g-4">
-						
+						<MovieLoader loading={loading} />
+
+						{!loading && movies.map((movie) => (
+							<MovieCards
+								key={movie._id}
+								movie={movie}
+								pageReload={pageReload}
+								refresh={setPageReload}
+								LoginRequiredModal={(showModal) => setShowLoginModal(showModal)}
+							/>
+						))}
 					</div>
 
-					<div className='mt-4'>
+					<div className='mt-4' style={{ display: isEmpty && !loading ? 'block' : 'none' }}>
 						<div className="no-results">
 							<i className="bi bi-film"></i>
 							<h3>No movies found</h3>
@@ -108,8 +228,10 @@ function Home() {
 
 				<Footer />
 			</div>
+
+			<LoginRequiredModal show={showLoginModal} onClose={() => setShowLoginModal(false)} />
 		</>
 	);
 }
 
-export default Home;
+export default Movies;

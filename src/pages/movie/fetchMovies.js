@@ -3,17 +3,19 @@ import configaration from '../../config/config.js';
 
 const api = new Api();
 
-export default async function displayHome(navigate, toast) {
+// Added 'payload' parameter to send filters to the backend
+export default async function displayMovies(toast, payload = {}) {
 	try {
-		const response = await api.getApi(
-			`${configaration.BASE_URL}/user/home`,
-			'',
+		const response = await api.postApi(
+			`${configaration.BASE_URL}/user/movies`,
+            '',
+			payload, // Passing the search/filter parameters here
 		);
 
 		const result = await response.json();
 
 		if (result.success) {
-			return result.data;
+			return result.data; // Now returns { movies, options }
 		} else {
 			toast.error(result.message, {
 				position: 'top-right',

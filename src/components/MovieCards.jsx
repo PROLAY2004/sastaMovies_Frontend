@@ -67,7 +67,7 @@ function MovieCards(cardDetails) {
                 <div className="card-body">
                     <div className="card-header-row">
                         <h5 className="card-title">{cardDetails.movie?.title}</h5>
-                        <button className={`action-save-btn ${!btnDisplay ? 'saved' : ''}`} disabled={loading} onClick={(e) => handleSet(e, cardDetails.movie?._id)} title="Save to list">
+                        <button className={`action-save-btn  ${!btnDisplay ? 'saved' : ''}`} disabled={loading} onClick={(e) => handleSet(e, cardDetails.movie?._id)} title="Save to list">
                             {loading ? <span className="spinner-border spinner-border-sm"></span> : <i className={btnDisplay ? "bi bi-bookmark" : "bi bi-bookmark-fill"}></i>}
                         </button>
                     </div>
