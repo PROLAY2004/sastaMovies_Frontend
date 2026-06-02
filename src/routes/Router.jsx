@@ -1,5 +1,7 @@
 import { createBrowserRouter } from 'react-router-dom';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 
+import configaruration from '../config/config.js';
 import ProtectedRoute from './ProtectedRoute.jsx';
 import Default from '../components/Default.jsx';
 import Home from '../pages/home/Home.jsx';
@@ -7,6 +9,8 @@ import Movies from '../pages/movie/Movies.jsx';
 import Series from '../pages/series/Series.jsx';
 import Contact from '../pages/contact/Contact.jsx';
 import Login from '../pages/login/Login.jsx';
+import Dashboard from '../pages/dashboard/Dashboard.jsx';
+import ContentPlayer from '../pages/player/ContentPlayer.jsx';
 
 const router = createBrowserRouter([
 	{
@@ -30,15 +34,24 @@ const router = createBrowserRouter([
 		element: <Contact />,
 	},
 	{
-		path: '/login',
-		element: <Login />,
+		path: '/player/:contentId',
+		element: (
+			<ContentPlayer />
+		),
 	},
-
+	{
+		path: '/login',
+		element: (
+			<GoogleOAuthProvider clientId={configaruration.CLIENT_ID}>
+				<Login />
+			</GoogleOAuthProvider>
+		),
+	},
 	{
 		path: '/account',
 		element: (
 			<ProtectedRoute>
-				<h1>Profile</h1>
+				<Dashboard />
 			</ProtectedRoute>
 		),
 	},

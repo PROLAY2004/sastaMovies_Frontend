@@ -1,12 +1,43 @@
+import {useState} from 'react';
+import {toast} from 'react-toastify';
+import {useNavigate} from 'react-router-dom';
+
+import contactResponse from './sendResponse.js';
 import '../../styles/contact.scss';
 import Nav from '../../components/Navbar.jsx';
 import Footer from '../../components/Footer.jsx';
 
 function Home() {
+	const navigate = useNavigate();
+	const [name, setName] = useState('');
+	const [email, setEmail] = useState('');
+	const [message, setMessage] = useState('');
+	const [isSubscribed, setIsSubscribed] = useState(false);
+	const [loading, setLoading] = useState(false);
+
+	const handleSubmit = async (e) => {
+		e.preventDefault();
+		setLoading(true);
+
+		const isSuccess = await contactResponse(navigate, toast, {
+			name,
+			email,
+			message,
+			isSubscribed,
+		});
+
+		if (isSuccess) {
+			setName('');
+			setEmail('');
+			setMessage('');
+			setIsSubscribed(false);
+		}
+
+		setLoading(false);
+	}
+
 	return (
 		<>
-			<div className="texture-overlay"></div>
-
 			<Nav />
 
 			<div className="main-content">
@@ -28,17 +59,17 @@ function Home() {
 									hours.
 								</p>
 
-								<form id="contactForm">
+								<form onSubmit={handleSubmit}>
 									<div className="row">
 										<div className="col-md-6">
 											<div className="form-group">
 												<label className="form-label">Full Name</label>
 												<input
 													type="text"
-													className="form-control"
-													id="fullName"
+													className="contact-form-control"
+													value={name}
+													onChange={(e) => setName(e.target.value)}
 													placeholder="John Doe"
-													required
 												/>
 											</div>
 										</div>
@@ -47,10 +78,10 @@ function Home() {
 												<label className="form-label">Email Address</label>
 												<input
 													type="email"
-													className="form-control"
-													id="emailAddress"
+													className="contact-form-control"
+													value={email}
+													onChange={(e) => setEmail(e.target.value)}
 													placeholder="john@example.com"
-													required
 												/>
 											</div>
 										</div>
@@ -59,11 +90,12 @@ function Home() {
 									<div className="form-group">
 										<label className="form-label">Message</label>
 										<textarea
-											className="form-control"
-											id="messageText"
+											className="contact-form-control"
 											rows="5"
 											placeholder="Tell us how we can help you..."
-											required></textarea>
+											value={message}
+											onChange={(e) => setMessage(e.target.value)}
+										></textarea>
 									</div>
 
 									<div className="form-group">
@@ -72,15 +104,18 @@ function Home() {
 												className="form-check-input"
 												type="checkbox"
 												id="newsletterCheck"
+												checked={isSubscribed}
+												onChange={(e) => setIsSubscribed(e.target.checked)}
 												style={{
 													backgroundColor: 'transparent',
-													borderColor: 'var(--color-primary)',
+													borderColor: '#f5b81b',
 												}}
 											/>
 											<label
 												className="form-check-label"
+												htmlFor='newsletterCheck'
 												style={{
-													color: 'var(--color-gray-light)',
+													color: '#b0b0b0',
 													fontSize: '0.8rem',
 												}}>
 												Subscribe to newsletter for updates and exclusive offers
@@ -88,8 +123,21 @@ function Home() {
 										</div>
 									</div>
 
-									<button type="submit" className="btn-submit">
-										<i className="bi bi-send-fill me-2"></i>Send Message
+									<button
+										disabled={loading}
+										className="btn-submit d-flex justify-content-center gap-2 align-items-center"
+										type="submit">
+										{loading ? (
+											<>
+												<div
+													className="spinner-border"
+													role="status"
+													style={{ width: '20px', height: '20px' }}></div>
+												Sending, Please wait...
+											</>
+										) : (
+											<i className="bi bi-send-fill me-2"> Send Message</i> 
+										)}
 									</button>
 								</form>
 							</div>

@@ -1,0 +1,625 @@
+@import './common/root';
+@import './common/playerAnimation';
+
+/* =========================================
+   1. BASE PAGE & NAVBAR
+   ========================================= */
+.player-page {
+    background: $color-black;
+    padding-top: 50px;
+    min-height: 100vh;
+    color: $color-white;
+}
+
+.player-navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 999;
+    background: $gradient-nav;
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(245, 184, 27, 0.08);
+}
+
+.player-nav-container {
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 1rem 15px;
+    display: flex;
+    align-items: center;
+}
+
+.logo-text {
+    font-size: $font-2xl;
+    font-weight: $font-extrabold;
+    color: $color-primary;
+    margin: 0;
+    letter-spacing: -0.5px;
+
+    span {
+        color: $color-white;
+    }
+}
+
+/* =========================================
+   2. MAIN LAYOUT
+   ========================================= */
+.player-container {
+    width: 100%;
+    max-width: 1400px;
+    padding-left: 15px;
+    padding-right: 15px;
+    margin: 0 auto;
+}
+
+.player-layout {
+    display: grid;
+    grid-template-columns: 1.7fr 0.9fr;
+    gap: 1.5rem;
+    align-items: start;
+}
+
+/* =========================================
+   3. CUSTOM VIDEO PLAYER WRAPPER
+   ========================================= */
+.custom-player-wrapper {
+    position: relative;
+    width: 100%;
+    background: $color-black;
+    border-radius: 22px;
+    overflow: hidden;
+    border: 1px solid rgba(245, 184, 27, 0.18);
+    box-shadow: 0 10px 35px rgba(0, 0, 0, 0.45);
+    aspect-ratio: 16 / 9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+
+    /* Reveal controls on hover */
+    &:hover .custom-controls {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    /* Force controls to show if paused or hovered (not idle) */
+    &:hover:not(.is-idle) .custom-controls,
+    &.is-paused .custom-controls {
+        opacity: 1 !important;
+        transform: translateY(0) !important;
+        pointer-events: auto !important;
+    }
+
+    /* Hide cursor and UI when idle */
+    &.is-idle {
+        cursor: none;
+
+        * {
+            cursor: none !important;
+        }
+    }
+}
+
+/* Override hide for idle state unless paused */
+.custom-player-wrapper.is-idle:not(.is-paused) .custom-controls {
+    opacity: 0 !important;
+    transform: translateY(15px) !important;
+    pointer-events: none !important;
+}
+
+.custom-player-wrapper.is-idle:not(.is-paused) .center-play-overlay {
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+.video-element {
+    width: 100%;
+    height: 100%;
+    // object-fit: cover;
+    cursor: pointer;
+    object-fit: contain;
+    -webkit-touch-callout: none;
+    background: #000;
+}
+
+/* =========================================
+   4. PLAYER OVERLAYS (Play Btn & Spinner)
+   ========================================= */
+.center-play-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.4);
+    transition: opacity 0.3s ease;
+    cursor: pointer;
+    z-index: 4;
+
+    &.is-playing {
+        opacity: 0;
+        pointer-events: none;
+    }
+}
+
+.center-play-btn {
+    width: 85px;
+    height: 85px;
+    border-radius: 50%;
+    background: rgba(10, 10, 10, 0.7);
+    border: 2px solid $color-primary;
+    color: $color-primary;
+    font-size: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    backdrop-filter: blur(8px);
+    padding-left: 6px;
+
+    &:hover {
+        transform: scale(1.15);
+        background: $color-primary;
+        color: $color-black;
+    }
+}
+
+/* =========================================
+   5. BOTTOM CONTROL BAR
+   ========================================= */
+.custom-controls {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: 30px 20px 20px;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.6) 60%, transparent 100%);
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    opacity: 0;
+    transform: translateY(15px);
+    pointer-events: none;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+    z-index: 10;
+}
+
+.progress-container {
+    width: 100%;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    cursor: pointer;
+    position: relative;
+    display: flex;
+    align-items: center;
+    touch-action: none;
+
+    &:hover {
+        height: 7px;
+
+        .progress-thumb {
+            transform: scale(1);
+        }
+    }
+}
+
+.progress-filled {
+    height: 100%;
+    background: $color-primary;
+    border-radius: 4px;
+    position: relative;
+    box-shadow: 0 0 10px rgba(245, 184, 27, 0.4);
+}
+
+.progress-thumb {
+    width: 14px;
+    height: 14px;
+    background: $color-primary;
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    margin-top: -7px;
+    margin-left: -7px;
+    transform: scale(0);
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+.controls-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.controls-left,
+.controls-right {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+}
+
+.control-btn {
+    background: none;
+    border: none;
+    color: $color-white-dark;
+    font-size: 1.25rem;
+    cursor: pointer;
+    transition: color $transition-fast, transform $transition-fast;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+
+    &:hover {
+        color: $color-primary;
+        transform: scale(1.1);
+    }
+}
+
+.play-btn-primary {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: $color-primary;
+    color: $color-black;
+    font-size: 1.6rem;
+
+    i {
+        margin-left: 2px;
+    }
+
+    &:hover {
+        background: $color-primary-light;
+        color: $color-black;
+        transform: scale(1.1);
+    }
+}
+
+.volume-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    &:hover .volume-slider-container,
+    &.force-show .volume-slider-container {
+        width: 80px;
+        opacity: 1;
+        pointer-events: auto;
+    }
+}
+
+.volume-slider-container {
+    width: 0px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: width 0.3s ease, opacity 0.3s ease;
+}
+
+.volume-slider {
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+    position: relative;
+    cursor: pointer;
+    touch-action: none;
+}
+
+.volume-filled {
+    height: 100%;
+    background: $color-primary;
+    border-radius: 2px;
+}
+
+.volume-thumb {
+    width: 10px;
+    height: 10px;
+    background: $color-primary;
+    border-radius: 50%;
+    position: absolute;
+    top: 50%;
+    margin-top: -5px;
+    margin-left: -5px;
+}
+
+.time-display {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: $color-white;
+    letter-spacing: 0.5px;
+    margin-left: 5px;
+    opacity: 0.9;
+}
+
+.control-text-btn {
+    background: none;
+    border: none;
+    color: $color-white-dark;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: color $transition-fast;
+
+    &:hover {
+        color: $color-primary;
+    }
+}
+
+/* =========================================
+   6. CONTENT SIDEBAR & DETAILS
+   ========================================= */
+.series-content-box,
+.imdb-banner-card {
+    background: rgba(10, 10, 10, 0.96);
+    border: 1px solid rgba(245, 184, 27, 0.14);
+    border-radius: 22px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+}
+
+.series-content-box {
+    padding: 1.7rem;
+}
+
+.series-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: $color-white;
+    margin-top: 0.5rem;
+    letter-spacing: -0.4px;
+}
+
+.series-subtitle {
+    color: $color-gray-light;
+    font-size: 0.95rem;
+}
+
+.series-description,
+.banner-description {
+    color: $color-gray-light;
+    line-height: 1.7;
+    font-size: 0.96rem;
+}
+
+.dropdown-label {
+    display: block;
+    font-size: 0.85rem;
+    margin-bottom: 0.45rem;
+    color: $color-gray-light;
+}
+
+.season-select {
+    appearance: none;
+    background: $color-black-lighter;
+    border: 1px solid rgba(245, 184, 27, 0.2);
+    color: $color-white;
+    padding: 0.82rem 1rem;
+    padding-right: 2.8rem;
+    border-radius: $radius-md;
+    outline: none;
+    // min-width: 160px;
+    transition: $transition-normal ease;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='none' stroke='%23f5b81b' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='3 5 7 9 11 5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 14px;
+    cursor: pointer;
+
+    &:focus {
+        border-color: $color-primary;
+        box-shadow: 0 0 0 3px rgba(245, 184, 27, 0.12);
+    }
+}
+
+.episode-heading {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.episode-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 0.9rem;
+}
+
+.episode-btn {
+    padding: 0.8rem 1.3rem;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    color: $color-white;
+    font-weight: 600;
+    transition: 0.3s ease;
+
+    &:hover {
+        transform: translateY(-2px);
+        border-color: rgba(245, 184, 27, 0.45);
+    }
+
+    &.active {
+        background: $color-primary;
+        color: #111;
+        border-color: $color-primary;
+        box-shadow: 0 10px 25px rgba(245, 184, 27, 0.3);
+    }
+}
+
+.imdb-banner-card {
+    overflow: hidden;
+    position: sticky;
+    top: 100px;
+}
+
+.movie-poster {
+    width: 100%;
+    max-height: 720px;
+    object-fit: cover;
+    margin-bottom: 1.5rem;
+    border: 1px solid rgba(245, 184, 27, 0.14);
+}
+
+.info-section {
+    padding: 1.5rem;
+}
+
+.movie-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+}
+
+.meta-item {
+    flex: 1;
+    min-width: 90px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    padding: 0.9rem 0.7rem;
+    border-radius: 14px;
+    text-align: center;
+    color: $color-gray-light;
+    font-size: 0.88rem;
+
+    i {
+        display: block;
+        font-size: 1.2rem;
+        margin-bottom: 0.45rem;
+        color: #f5b81b;
+    }
+}
+
+.movie-details-grid {
+    display: grid;
+    grid-template-columns: 110px 1fr;
+    gap: 0.9rem 1rem;
+}
+
+.detail-label {
+    font-weight: 700;
+    color: $color-white;
+}
+
+.detail-value {
+    color: $color-gray-light;
+    line-height: 1.6;
+    word-break: break-word;
+}
+
+/* =========================================
+   7. RESPONSIVE MEDIA QUERIES
+   ========================================= */
+
+/* Large Desktop */
+@media (min-width: 1800px) {
+    .player-layout {
+        grid-template-columns: 2.1fr 0.8fr;
+        gap: 2rem;
+    }
+
+    .series-title {
+        font-size: 2.5rem;
+    }
+
+    .custom-player-wrapper {
+        border-radius: 28px;
+    }
+
+    .video-element {
+        max-height: 78vh;
+    }
+}
+
+/* Tablets & Small Laptops */
+@media (max-width: 992px) {
+    .player-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .imdb-banner-card {
+        position: relative;
+        top: 0;
+    }
+}
+
+/* Mobile Devices */
+@media (max-width: 576px) {
+
+    .series-content-box,
+    .info-section {
+        padding: 1.1rem;
+    }
+
+    .series-title {
+        font-size: 1.4rem;
+    }
+
+    .episode-btn {
+        width: 100%;
+        /* Full width buttons for easy tapping */
+    }
+
+    /* Shrink the huge overlays */
+    .center-play-btn {
+        width: 60px;
+        height: 60px;
+        font-size: 2rem;
+        padding-left: 4px;
+    }
+
+    .video-spinner {
+        width: 45px;
+        height: 45px;
+    }
+
+    /* Compress the control bar to fit narrow screens */
+    .custom-controls {
+        padding: 20px 10px 10px;
+        gap: 10px;
+    }
+
+    .controls-left,
+    .controls-right {
+        gap: 8px;
+        /* Tighter spacing */
+    }
+
+    .control-btn {
+        font-size: 1.1rem;
+        /* Slightly smaller icons */
+    }
+
+    .play-btn-primary {
+        width: 36px;
+        height: 36px;
+        font-size: 1.2rem;
+    }
+
+    .time-display {
+        font-size: 0.75rem;
+        margin-left: 0;
+    }
+
+    .control-text-btn {
+        font-size: 0.9rem;
+    }
+
+    /* Hide Volume Slider Drag-Bar on Mobile (Rely on physical buttons) */
+    // .volume-slider-container {
+    //     display: none !important;
+    // }
+
+    /* Ensure no overflow on movie details */
+    .movie-details-grid {
+        grid-template-columns: 90px 1fr;
+        font-size: 0.9rem;
+    }
+}

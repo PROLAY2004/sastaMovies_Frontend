@@ -1,22 +1,112 @@
+import { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
+
 import '../../styles/movie.scss';
 import Nav from '../../components/Navbar.jsx';
 import Footer from '../../components/Footer.jsx';
+import displaySeries from './fetchSeries.js';
+import SeriesCards from '../../components/SeriesCards.jsx';
+import LoginRequiredModal from '../../components/modals/LoginRequiredModal.jsx';
+import MovieLoader from '../../components/Loader/movieLoader.jsx';
 
-function Home() {
+function Series() {
+	// Series List States
+	const [series, setSeries] = useState([]);
+	const [isEmpty, setIsEmpty] = useState(false);
+	const [loading, setLoading] = useState(true);
+	const [showLoginModal, setShowLoginModal] = useState(false);
+	const [pageReload, setPageReload] = useState(0);
+
+	// Dynamic Dropdown Options (fetched from DB)
+	const [filterOptions, setFilterOptions] = useState({ genres: [], years: [], ratings: [] });
+
+	// Pending UI Selections (wait for "Apply" button)
+	const [selectedGenre, setSelectedGenre] = useState('all');
+	const [selectedYear, setSelectedYear] = useState('all');
+	const [selectedRating, setSelectedRating] = useState('all');
+
+	// Live Inputs (Search & Sort apply immediately)
+	const [searchInput, setSearchInput] = useState('');
+
+	// Active Filters sent to API
+	const [activeFilters, setActiveFilters] = useState({
+		searchQuery: '',
+		genre: 'all',
+		year: 'all',
+		rating: 'all',
+		sortBy: 'default'
+	});
+
+	const handleDisplay = async () => {
+		setLoading(true);
+		const isSuccess = await displaySeries(toast, activeFilters);
+
+		if (isSuccess) {
+			setSeries(isSuccess.series);
+
+			// Populate dynamic dropdowns only on initial fetch
+			if (filterOptions.genres.length === 0) {
+				setFilterOptions(isSuccess.options);
+			}
+
+			if (isSuccess.series.length) {
+				setIsEmpty(false);
+			} else {
+				setIsEmpty(true);
+			}
+		}
+		setLoading(false);
+	};
+
+	// Apply button triggers the filter updates
+	const applyFilters = () => {
+		setActiveFilters(prev => ({
+			...prev,
+			genre: selectedGenre,
+			year: selectedYear,
+			rating: selectedRating
+		}));
+	};
+
+	// Reset button clears everything
+	const resetFilters = () => {
+		setSelectedGenre('all');
+		setSelectedYear('all');
+		setSelectedRating('all');
+		setSearchInput('');
+
+		setActiveFilters({
+			searchQuery: '',
+			genre: 'all',
+			year: 'all',
+			rating: 'all',
+			sortBy: 'default'
+		});
+	};
+
+	// Debounce the search input
+	useEffect(() => {
+		const delaySearch = setTimeout(() => {
+			setActiveFilters(prev => ({ ...prev, searchQuery: searchInput }));
+		}, 500);
+
+		return () => clearTimeout(delaySearch);
+	}, [searchInput]);
+
+	// Fetch data whenever activeFilters change
+	useEffect(() => {
+		handleDisplay();
+	}, [activeFilters, pageReload]);
+
 	return (
 		<>
-			<div className="texture-overlay"></div>
-
 			<Nav />
 
 			<div className="main-content">
 				<div className="container">
 					<div className="movies-header">
 						<h1>TV Series</h1>
-						<p>
-							Binge-worthy series from around the world. New episodes added
-							weekly.
-						</p>
+						<p>Binge-worthy series from around the world. New episodes added weekly.</p>
 					</div>
 
 					<div className="filter-section">
@@ -25,83 +115,81 @@ function Home() {
 							<input
 								type="text"
 								className="search-input"
-								id="searchInput"
 								placeholder="Search by title, genre, or cast..."
+								value={searchInput}
+								onChange={(e) => setSearchInput(e.target.value)}
 							/>
 						</div>
 
 						<div className="filter-group">
 							<div className="filter-item">
 								<label className="filter-label">Genre</label>
-								<select className="filter-select" id="genreFilter">
+								<select
+									className="filter-select"
+									value={selectedGenre}
+									onChange={(e) => setSelectedGenre(e.target.value)}
+								>
 									<option value="all">All Genres</option>
-									<option value="Action">Action</option>
-									<option value="Sci-Fi">Sci-Fi</option>
-									<option value="Drama">Drama</option>
-									<option value="Thriller">Thriller</option>
-									<option value="Cyberpunk">Cyberpunk</option>
-									<option value="Fantasy">Fantasy</option>
-									<option value="Crime">Crime</option>
-									<option value="Comedy">Comedy</option>
-									<option value="Horror">Horror</option>
-									<option value="Mystery">Mystery</option>
+									{filterOptions.genres.map(genre => (
+										<option key={genre} value={genre}>{genre}</option>
+									))}
 								</select>
 							</div>
 
 							<div className="filter-item">
 								<label className="filter-label">Year</label>
-								<select className="filter-select" id="yearFilter">
+								<select
+									className="filter-select"
+									value={selectedYear}
+									onChange={(e) => setSelectedYear(e.target.value)}
+								>
 									<option value="all">All Years</option>
-									<option value="2025">2025</option>
-									<option value="2024">2024</option>
-									<option value="2023">2023</option>
-									<option value="2022">2022</option>
-									<option value="2021">2021</option>
+									{filterOptions.years.map(year => (
+										<option key={year} value={year}>{year}</option>
+									))}
 								</select>
 							</div>
 
 							<div className="filter-item">
 								<label className="filter-label">Rating</label>
-								<select className="filter-select" id="ratingFilter">
+								<select
+									className="filter-select"
+									value={selectedRating}
+									onChange={(e) => setSelectedRating(e.target.value)}
+								>
 									<option value="all">All Ratings</option>
-									<option value="9">9+ Stars</option>
-									<option value="8">8+ Stars</option>
-									<option value="7">7+ Stars</option>
-									<option value="6">6+ Stars</option>
-								</select>
-							</div>
-
-							<div className="filter-item">
-								<label className="filter-label">Quality</label>
-								<select className="filter-select" id="qualityFilter">
-									<option value="all">All Quality</option>
-									<option value="4K">4K Ultra HD</option>
-									<option value="HD">HD</option>
+									{filterOptions.ratings.map(rating => (
+										<option key={rating} value={rating}>{rating}+ Stars</option>
+									))}
 								</select>
 							</div>
 
 							<div className="filter-buttons">
-								<button className="btn-filter" id="applyFiltersBtn">
+								<button className="btn-filter" onClick={applyFilters}>
 									Apply Filters
 								</button>
-								<button className="btn-reset" id="resetFiltersBtn">
+								<button className="btn-reset" onClick={resetFilters}>
 									Reset
 								</button>
 							</div>
 						</div>
 
-						<div className="active-filters" id="activeFilters"></div>
+						<div className="active-filters"></div>
 					</div>
 
 					<div className="results-count">
 						<div className="count-text">
-							<span className="count-number" id="seriesCount">
-								0
+							<span className="count-number">
+								{series.length}
 							</span>{' '}
 							series found
 						</div>
 						<div>
-							<select className="sort-select" id="sortSelect">
+							<select
+								className="sort-select"
+								value={activeFilters.sortBy}
+								onChange={(e) => setActiveFilters(prev => ({ ...prev, sortBy: e.target.value }))}
+							>
 								<option value="default">Sort by: Featured</option>
 								<option value="rating">Sort by: Rating (High to Low)</option>
 								<option value="year">Sort by: Year (Newest First)</option>
@@ -111,9 +199,21 @@ function Home() {
 						</div>
 					</div>
 
-					<div className="row g-4" id="seriesGrid"></div>
+					<div className="row g-4">
+						<MovieLoader loading={loading} />
 
-					<div id="noResultsTemplate">
+						{!loading && series.map((item) => (
+							<SeriesCards
+								key={item._id}
+								series={item}
+								pageReload={pageReload}
+								refresh={setPageReload}
+								LoginRequiredModal={(showModal) => setShowLoginModal(showModal)}
+							/>
+						))}
+					</div>
+
+					<div className='mt-4' style={{ display: isEmpty && !loading ? 'block' : 'none' }}>
 						<div className="no-results">
 							<i className="bi bi-tv"></i>
 							<h3>No series found</h3>
@@ -124,8 +224,10 @@ function Home() {
 
 				<Footer />
 			</div>
+
+			<LoginRequiredModal show={showLoginModal} onClose={() => setShowLoginModal(false)} />
 		</>
 	);
 }
 
-export default Home;
+export default Series;

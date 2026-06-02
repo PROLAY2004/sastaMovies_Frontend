@@ -82,7 +82,7 @@
 .btn-main {
     background: linear-gradient(135deg, #f5b81b, #ffd54a);
     border: none;
-    border-radius: 30px;
+    border-radius: 10px;
     padding: 12px;
     font-weight: 600;
     color: black;
@@ -128,12 +128,23 @@
 
 /* Footer */
 .footer-text {
-    text-align: center;
+    display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 5px;
     font-size: 0.8rem;
     color: #777;
     margin-top: 1.5rem;
 }
 
+.resend-btn {
+    background: none;
+    border: none;
+    color: #f5b81b;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0;
+}
 /* Layout fix */
 .container-main {
     min-height: 100vh;

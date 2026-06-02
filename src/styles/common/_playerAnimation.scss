@@ -1,0 +1,300 @@
+.video-spinner-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 5;
+    pointer-events: none;
+}
+
+.video-spinner {
+    width: 65px;
+    height: 65px;
+    border: 4px solid rgba(255, 255, 255, 0.15);
+    border-left-color: $color-primary;
+    border-radius: 50%;
+    animation: smooth-spin 0.8s linear infinite;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.6);
+}
+
+@keyframes smooth-spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.seek-ripple-overlay {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 35%;
+    /* Takes up left/right 35% of screen */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    /* Crucial: lets clicks pass through to the video */
+    z-index: 6;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+
+    &.left {
+        left: 0;
+    }
+
+    &.right {
+        right: 0;
+    }
+
+    /* Trigger the animation class */
+    &.animate {
+        opacity: 1;
+
+        .ripple-circle {
+            animation: seek-ripple 0.6s ease-out forwards;
+        }
+
+        .arrows i {
+            animation: arrow-cascade 0.6s linear infinite;
+        }
+    }
+}
+
+/* The curved ripple effect */
+.ripple-circle {
+    position: absolute;
+    width: 150%;
+    height: 150%;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 50%;
+    opacity: 0;
+    transform: scale(0.5);
+}
+
+.seek-ripple-overlay.left .ripple-circle {
+    left: -50%;
+    /* Pull it left so it forms a curve on screen */
+}
+
+.seek-ripple-overlay.right .ripple-circle {
+    right: -50%;
+    /* Pull it right */
+}
+
+/* The text and arrows */
+.seek-content {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    color: $color-white;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+
+    span {
+        display: block;
+        font-size: 0.9rem;
+        font-weight: 600;
+        margin-top: 5px;
+    }
+
+    .arrows {
+        display: flex;
+        justify-content: center;
+        gap: -2px;
+        /* Pull arrows tight together */
+        font-size: 2rem;
+
+        i {
+            opacity: 0.3;
+        }
+    }
+}
+
+/* Ripple background animation */
+@keyframes seek-ripple {
+    0% {
+        opacity: 0.8;
+        transform: scale(0.5);
+    }
+
+    100% {
+        opacity: 0;
+        transform: scale(1);
+    }
+}
+
+/* Cascading arrow animation */
+@keyframes arrow-cascade {
+
+    0%,
+    100% {
+        opacity: 0.3;
+    }
+
+    50% {
+        opacity: 1;
+    }
+}
+
+/* Stagger the arrows so they light up in sequence */
+.seek-ripple-overlay.left .arrows i:nth-child(1) {
+    animation-delay: 0s;
+}
+
+.seek-ripple-overlay.left .arrows i:nth-child(2) {
+    animation-delay: 0.15s;
+}
+
+.seek-ripple-overlay.left .arrows i:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+.seek-ripple-overlay.right .arrows i:nth-child(1) {
+    animation-delay: 0.3s;
+}
+
+.seek-ripple-overlay.right .arrows i:nth-child(2) {
+    animation-delay: 0.15s;
+}
+
+.seek-ripple-overlay.right .arrows i:nth-child(3) {
+    animation-delay: 0s;
+}
+
+
+/* Responsive Adjustments for Mobile */
+@media (max-width: 576px) {
+    .seek-content span {
+        font-size: 0.8rem;
+    }
+
+    .seek-content .arrows {
+        font-size: 1.5rem;
+    }
+}
+
+/* =========================================
+   2X SPEED HOLD BADGE
+   ========================================= */
+.speed-badge {
+    position: absolute;
+    top: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.75);
+    color: $color-white;
+    padding: 8px 18px;
+    border-radius: 20px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    z-index: 20;
+    pointer-events: none;
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    animation: speed-fade 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+
+    i {
+        color: $color-primary;
+    }
+}
+
+@keyframes speed-fade {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -15px) scale(0.9);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0) scale(1);
+    }
+}
+
+/* =========================================
+   VLC GESTURE INDICATORS (Volume & Brightness)
+   ========================================= */
+.gesture-indicator {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.7);
+    padding: 15px 25px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    z-index: 20;
+    pointer-events: none;
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: $color-white;
+    animation: fade-in 0.15s ease-out;
+
+    i {
+        font-size: 1.8rem;
+        color: $color-primary;
+    }
+
+    span {
+        font-size: 1.1rem;
+        font-weight: bold;
+        min-width: 45px;
+        text-align: right;
+    }
+}
+
+.gesture-bar-bg {
+    width: 120px;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.gesture-bar-fill {
+    height: 100%;
+    background: $color-primary;
+    transition: width 0.1s linear;
+}
+
+@keyframes fade-in {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -40%);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+    }
+}
+
+@media (max-width: 576px) {
+    .gesture-indicator {
+        flex-direction: column;
+        padding: 15px;
+        gap: 10px;
+
+        i {
+            font-size: 1.5rem;
+        }
+
+        .gesture-bar-bg {
+            width: 100px;
+        }
+
+        span {
+            text-align: center;
+        }
+    }
+}
