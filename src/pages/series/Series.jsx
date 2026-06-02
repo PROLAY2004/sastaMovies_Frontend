@@ -7,7 +7,7 @@ import Footer from '../../components/Footer.jsx';
 import displaySeries from './fetchSeries.js';
 import SeriesCards from '../../components/SeriesCards.jsx';
 import LoginRequiredModal from '../../components/modals/LoginRequiredModal.jsx';
-import MovieLoader from '../../components/Loader/movieLoader.jsx';
+import MovieLoader from '../../components/Loader/MovieLoader.jsx';
 
 function Series() {
 	// Series List States
