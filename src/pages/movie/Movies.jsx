@@ -8,7 +8,7 @@ import Footer from '../../components/Footer.jsx';
 import displayMovies from './fetchMovies.js';
 import MovieCards from '../../components/MovieCards.jsx';
 import LoginRequiredModal from '../../components/modals/LoginRequiredModal.jsx';
-import MovieLoader from '../../components/Loader/movieLoader.jsx';
+import MovieLoader from '../../components/Loader/MovieLoader.jsx';
 
 function Movies() {
 	const navigate = useNavigate();
