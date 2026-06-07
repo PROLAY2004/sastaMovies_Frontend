@@ -14,6 +14,7 @@ function HeroSection({ randomContent, pageReload, refresh, LoginRequiredModal })
 
     const handleWatch = () => {
         if (!isAuthenticated()) {
+            localStorage.setItem('postLoginRedirect', `/player/${randomContent?._id}`);
             LoginRequiredModal(true);
         }
         else {

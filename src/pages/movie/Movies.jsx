@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
@@ -20,6 +20,9 @@ function Movies() {
 	const [showLoginModal, setShowLoginModal] = useState(false);
 	const [pageReload, setPageReload] = useState(0);
 
+	// 1. Add a ref to track the previous value of pageReload
+	const prevPageReload = useRef(pageReload);
+
 	// Dynamic Dropdown Options (fetched from DB)
 	const [filterOptions, setFilterOptions] = useState({ genres: [], years: [], ratings: [] });
 
@@ -40,8 +43,13 @@ function Movies() {
 		sortBy: 'default'
 	});
 
-	const handleDisplay = async () => {
-		setLoading(true);
+	// 2. Add a 'showLoader' parameter, defaulting to true
+	const handleDisplay = async (showLoader = true) => {
+		// Only trigger the full loading screen if we explicitly want to
+		if (showLoader) {
+			setLoading(true);
+		}
+
 		const isSuccess = await displayMovies(toast, activeFilters);
 
 		if (isSuccess) {
@@ -58,7 +66,7 @@ function Movies() {
 				setIsEmpty(true);
 			}
 		}
-		
+
 		setLoading(false);
 	};
 
@@ -97,9 +105,17 @@ function Movies() {
 		return () => clearTimeout(delaySearch);
 	}, [searchInput]);
 
-	// Fetch data whenever activeFilters change
+	// 3. Fetch data whenever activeFilters change or page is reloaded via bookmark
 	useEffect(() => {
-		handleDisplay();
+		// If pageReload changed, it means a bookmark was clicked. We want a silent refresh.
+		const isBookmarkRefresh = prevPageReload.current !== pageReload;
+
+		// If it IS a bookmark refresh, pass 'false' to hide the loader. 
+		// If it's a filter change or initial mount, pass 'true' to show the loader.
+		handleDisplay(!isBookmarkRefresh);
+
+		// Update the ref to the current value
+		prevPageReload.current = pageReload;
 	}, [activeFilters, pageReload]);
 
 	return (

@@ -8,6 +8,7 @@ function Nav() {
 	const navigate = useNavigate();
 	const pathName = window.location.pathname;
 	const displayProfile = () => {
+		localStorage.removeItem('postLoginRedirect');
 		navigate('/account');
 	};
 
