@@ -182,6 +182,7 @@ function ContentPlayer() {
         const clientX = e.clientX;
 
         if (clickTimeoutRef.current) {
+            // DOUBLE CLICK / TAP: Skip
             clearTimeout(clickTimeoutRef.current);
             clickTimeoutRef.current = null;
             const isRightSide = clientX > rect.left + (rect.width / 2);
@@ -189,8 +190,34 @@ function ContentPlayer() {
             if (isRightSide) skip(10);
             else skip(-10);
         } else {
+            // SINGLE CLICK / TAP
             clickTimeoutRef.current = setTimeout(() => {
-                togglePlay();
+                const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
+                if (isTouchDevice) {
+                    // Mobile: Toggle Controls
+                    setIsIdle((prevIdle) => {
+                        const newIdleState = !prevIdle; // Toggle the state
+
+                        // Clear any existing timers
+                        if (idleTimeoutRef.current) clearTimeout(idleTimeoutRef.current);
+
+                        // If we are SHOWING controls (!newIdleState), start the 5s auto-hide timer
+                        if (!newIdleState) {
+                            idleTimeoutRef.current = setTimeout(() => {
+                                if (videoRef.current && !videoRef.current.paused) {
+                                    setIsIdle(true);
+                                }
+                            }, 5000);
+                        }
+
+                        return newIdleState;
+                    });
+                } else {
+                    // PC: Play / Pause
+                    togglePlay();
+                }
+
                 clickTimeoutRef.current = null;
             }, 250);
         }
@@ -397,7 +424,10 @@ function ContentPlayer() {
 
                         <div
                             className={`custom-player-wrapper ${isIdle ? 'is-idle' : ''} ${!isPlaying ? 'is-paused' : ''}`}
-                            onMouseMove={resetIdleTimer}
+                            onPointerMove={(e) => {
+                                // ONLY trigger for actual mouse movement, ignore touch-synthesized moves
+                                if (e.pointerType === 'mouse') resetIdleTimer();
+                            }}
                             onMouseEnter={resetIdleTimer}
                             onMouseLeave={handlePlayerMouseLeave}
                             ref={playerContainerRef}

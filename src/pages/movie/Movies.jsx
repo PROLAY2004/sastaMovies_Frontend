@@ -58,6 +58,7 @@ function Movies() {
 				setIsEmpty(true);
 			}
 		}
+		
 		setLoading(false);
 	};
 
