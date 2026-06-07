@@ -13,6 +13,7 @@ function SeriesCards(cardDetails) {
 
     const handleWatch = () => {
         if (!isAuthenticated()) {
+            localStorage.setItem('postLoginRedirect', `/player/${cardDetails.series?._id}`);
             cardDetails.LoginRequiredModal(true);
         } else {
             navigate(`/player/${cardDetails.series?._id}`);

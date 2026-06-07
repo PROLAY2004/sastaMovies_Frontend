@@ -38,7 +38,9 @@ function Login() {
 		const isLogged = await userLogin(email, otp, setLoading, toast);
 
 		if (isLogged) {
-			navigate('/account', { replace: true });
+			const redirectPath = localStorage.getItem('postLoginRedirect') || '/account';
+			localStorage.removeItem('postLoginRedirect');
+			navigate(redirectPath, { replace: true });
 		}
 	};
 

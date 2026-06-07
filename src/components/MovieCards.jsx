@@ -13,6 +13,7 @@ function MovieCards(cardDetails) {
 
     const handleWatch = () => {
         if (!isAuthenticated()) {
+            localStorage.setItem('postLoginRedirect', `/player/${cardDetails.movie?._id}`);
             cardDetails.LoginRequiredModal(true);
         } else {
             navigate(`/player/${cardDetails.movie?._id}`);
