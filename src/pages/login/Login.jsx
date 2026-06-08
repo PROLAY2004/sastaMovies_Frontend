@@ -63,7 +63,9 @@ function Login() {
 			const isLogged = await googleResponse(response, toast);
 
 			if (isLogged) {
-				navigate('/account', { replace: true });
+				const redirectPath = localStorage.getItem('postLoginRedirect') || '/account';
+				localStorage.removeItem('postLoginRedirect');
+				navigate(redirectPath, { replace: true });
 			}
 		},
 		onError: (err) => {
