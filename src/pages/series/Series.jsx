@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
@@ -21,9 +21,6 @@ function Series() {
 	const [showLoginModal, setShowLoginModal] = useState(false);
 	const [pageReload, setPageReload] = useState(0);
 	const [savedContents, setSavedContents] = useState([]);
-
-	// 1. Add a ref to track the previous value of pageReload
-	const prevPageReload = useRef(pageReload);
 
 	// Dynamic Dropdown Options (fetched from DB)
 	const [filterOptions, setFilterOptions] = useState({ genres: [], years: [], ratings: [] });
@@ -119,17 +116,12 @@ function Series() {
 
 	// 3. Fetch data whenever activeFilters change or page is reloaded via bookmark
 	useEffect(() => {
-		// If pageReload changed, it means a bookmark was clicked. We want a silent refresh.
-		const isBookmarkRefresh = prevPageReload.current !== pageReload;
+		handleDisplay(true);
+	}, [activeFilters]);
 
-		// If it IS a bookmark refresh, pass 'false' to hide the loader. 
-		// If it's a filter change or initial mount, pass 'true' to show the loader.
-		handleDisplay(!isBookmarkRefresh);
+	useEffect(() => {
 		fetchUser();
-
-		// Update the ref to the current value
-		prevPageReload.current = pageReload;
-	}, [activeFilters, pageReload]);
+	}, [pageReload]);
 
 	return (
 		<>

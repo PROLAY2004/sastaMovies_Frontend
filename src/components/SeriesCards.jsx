@@ -3,59 +3,64 @@ import { toast } from 'react-toastify';
 import { useState, useEffect } from 'react';
 
 import isAuthenticated from '../utils/checkAuth.js';
-import getUser from '../utils/fetchUserDetails.js';
 import setContent from '../pages/home/setContent.js';
 
-function SeriesCards(cardDetails) {
+function SeriesCards({ series, refresh, LoginRequiredModal, savedContents }) {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [btnDisplay, setBtnDisplay] = useState(true);
 
     const handleWatch = () => {
         if (!isAuthenticated()) {
-            localStorage.setItem('postLoginRedirect', `/player/${cardDetails.series?._id}`);
-            cardDetails.LoginRequiredModal(true);
+            localStorage.setItem('postLoginRedirect', `/player/${series?._id}`);
+            LoginRequiredModal(true);
         } else {
-            navigate(`/player/${cardDetails.series?._id}`);
+            navigate(`/player/${series?._id}`);
         }
     }
-
 
     const handleSet = async (e, contentId) => {
         e.stopPropagation();
-        setLoading(true);
 
         if (!isAuthenticated()) {
             toast.error('Please log in to save.', { position: 'top-right', theme: 'dark' });
-        } else {
-            const isSuccess = await setContent(navigate, toast, contentId)
-
-            if (isSuccess) {
-                setBtnDisplay(!btnDisplay);
-                cardDetails.refresh((prev) => prev + 1)
-            }
+            return; // Stop execution
         }
-        
+
+        // OPTIMISTIC UPDATE: Instantly flip the button for immediate visual feedback
+        setBtnDisplay((prev) => !prev);
+        setLoading(true);
+
+        const isSuccess = await setContent(navigate, toast, contentId);
+
+        if (isSuccess) {
+            // Trigger the parent to silently update the background array
+            refresh((prev) => prev + 1);
+        } else {
+            // If API fails, revert the button back
+            setBtnDisplay((prev) => !prev);
+        }
+
         setLoading(false);
     }
 
+    // Cleaned up dependency array: only watch the series ID and the saved array
     useEffect(() => {
-        if (cardDetails.savedContents?.includes(cardDetails.series?._id)) {
+        if (savedContents?.includes(series?._id)) {
             setBtnDisplay(false);
-        }
-        else {
+        } else {
             setBtnDisplay(true);
         }
-    }, [cardDetails.series?._id, cardDetails.pageReload, cardDetails.savedContents])
+    }, [series?._id, savedContents]);
 
     return (
         <div className="col-6 col-sm-4 col-md-3 col-lg-2">
             <div className="movie-card" onClick={handleWatch}>
                 <div className="card-img-wrapper">
                     <img
-                        src={cardDetails.series?.posterUrl?.vertical || 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR6pdTz5L8m-BnQaPfYvrKXSpvTxri_DDtSqw&s'}
+                        src={series?.posterUrl?.vertical || 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR6pdTz5L8m-BnQaPfYvrKXSpvTxri_DDtSqw&s'}
                         className="card-img-top"
-                        alt={cardDetails.series?.title}
+                        alt={series?.title}
                         loading="lazy"
                     />
                     <div className="hover-play-btn">
@@ -65,17 +70,17 @@ function SeriesCards(cardDetails) {
 
                 <div className="card-body">
                     <div className="card-header-row">
-                        <h5 className="card-title">{cardDetails.series?.title}</h5>
-                        <button className={`action-save-btn ${!btnDisplay ? 'saved' : ''}`} disabled={loading} onClick={(e) => handleSet(e, cardDetails.series?._id)} title="Save to list">
+                        <h5 className="card-title">{series?.title}</h5>
+                        <button className={`action-save-btn ${!btnDisplay ? 'saved' : ''}`} disabled={loading} onClick={(e) => handleSet(e, series?._id)} title="Save to list">
                             {loading ? <span className="spinner-border spinner-border-sm"></span> : <i className={btnDisplay ? "bi bi-bookmark" : "bi bi-bookmark-fill"}></i>}
                         </button>
                     </div>
                     <div className="card-info-row">
-                        <span>{cardDetails.series?.release?.slice(-4) || 'Year'}</span>
+                        <span>{series?.release?.slice(-4) || 'Year'}</span>
                         <span>•</span>
                         <span className="rating-badge">
                             <i className="bi bi-star-fill text-warning" style={{ fontSize: '0.7rem' }}></i>
-                            {cardDetails.series?.rating || 'N/A'}
+                            {series?.rating || 'N/A'}
                         </span>
                     </div>
                 </div>

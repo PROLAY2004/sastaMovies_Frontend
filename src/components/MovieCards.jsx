@@ -5,52 +5,62 @@ import { useState, useEffect } from 'react';
 import isAuthenticated from '../utils/checkAuth.js';
 import setContent from '../pages/home/setContent.js';
 
-function MovieCards(cardDetails) {
+// Suggestion: Destructure your props to make the code much cleaner to read
+function MovieCards({ movie, refresh, LoginRequiredModal, savedContents }) {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [btnDisplay, setBtnDisplay] = useState(true);
 
     const handleWatch = () => {
         if (!isAuthenticated()) {
-            localStorage.setItem('postLoginRedirect', `/player/${cardDetails.movie?._id}`);
-            cardDetails.LoginRequiredModal(true);
+            localStorage.setItem('postLoginRedirect', `/player/${movie?._id}`);
+            LoginRequiredModal(true);
         } else {
-            navigate(`/player/${cardDetails.movie?._id}`);
+            navigate(`/player/${movie?._id}`);
         }
     }
 
     const handleSet = async (e, contentId) => {
-        e.stopPropagation(); // Prevents clicking the card background
-        setLoading(true);
+        e.stopPropagation();
+
         if (!isAuthenticated()) {
             toast.error('Please log in to save.', { position: 'top-right', theme: 'dark' });
+            return; // Stop execution
+        }
+
+        // OPTIMISTIC UPDATE: Instantly flip the button for immediate visual feedback
+        setBtnDisplay((prev) => !prev);
+        setLoading(true);
+
+        const isSuccess = await setContent(navigate, toast, contentId);
+
+        if (isSuccess) {
+            // Trigger the parent to silently update the background array
+            refresh((prev) => prev + 1);
         } else {
-            const isSuccess = await setContent(navigate, toast, contentId)
-            if (isSuccess) {
-                setBtnDisplay(!btnDisplay);
-                cardDetails.refresh((prev) => prev + 1)
-            }
+            // If API fails, revert the button back
+            setBtnDisplay((prev) => !prev);
         }
         setLoading(false);
     }
 
+    // Cleaned up dependency array: only watch the movie ID and the saved array
     useEffect(() => {
-        if (cardDetails.savedContents?.includes(cardDetails.movie?._id)) {
+        if (savedContents?.includes(movie?._id)) {
             setBtnDisplay(false);
-        }
-        else {
+        } else {
             setBtnDisplay(true);
         }
-    }, [cardDetails.movie?._id, cardDetails.pageReload, cardDetails.savedContents])
+    }, [movie?._id, savedContents]);
 
     return (
         <div className="col-6 col-sm-4 col-md-3 col-lg-2">
             <div className="movie-card" onClick={handleWatch}>
                 <div className="card-img-wrapper">
                     <img
-                        src={cardDetails.movie?.posterUrl?.vertical || 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR6pdTz5L8m-BnQaPfYvrKXSpvTxri_DDtSqw&s'}
+                        src={movie?.posterUrl?.vertical || 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR6pdTz5L8m-BnQaPfYvrKXSpvTxri_DDtSqw&s'}
                         className="card-img-top"
-                        alt={cardDetails.movie?.title}
+                        alt={movie?.title}
                         loading="lazy"
                     />
                     <div className="hover-play-btn">
@@ -60,17 +70,17 @@ function MovieCards(cardDetails) {
 
                 <div className="card-body">
                     <div className="card-header-row">
-                        <h5 className="card-title">{cardDetails.movie?.title}</h5>
-                        <button className={`action-save-btn  ${!btnDisplay ? 'saved' : ''}`} disabled={loading} onClick={(e) => handleSet(e, cardDetails.movie?._id)} title="Save to list">
+                        <h5 className="card-title">{movie?.title}</h5>
+                        <button className={`action-save-btn  ${!btnDisplay ? 'saved' : ''}`} disabled={loading} onClick={(e) => handleSet(e, movie?._id)} title="Save to list">
                             {loading ? <span className="spinner-border spinner-border-sm"></span> : <i className={btnDisplay ? "bi bi-bookmark" : "bi bi-bookmark-fill"}></i>}
                         </button>
                     </div>
                     <div className="card-info-row">
-                        <span>{cardDetails.movie?.release?.slice(-4) || 'Year'}</span>
+                        <span>{movie?.release?.slice(-4) || 'Year'}</span>
                         <span>•</span>
                         <span className="rating-badge">
                             <i className="bi bi-star-fill text-warning" style={{ fontSize: '0.7rem' }}></i>
-                            {cardDetails.movie?.rating || 'N/A'}
+                            {movie?.rating || 'N/A'}
                         </span>
                     </div>
                 </div>

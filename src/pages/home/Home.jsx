@@ -57,12 +57,15 @@ function Home() {
 
 	useEffect(() => {
 		handleDisplay();
-		fetchUser();
 
 		if(isAuthenticated()){
 			setDisplaySubscribe(false);
 		}
-	}, [pageReload])
+	}, [])
+
+	useEffect(() => {
+		fetchUser();
+	}, [pageReload]); // Only depends on pageReload
 
 	const saveContent = () => {
 		if (!isAuthenticated()) {
