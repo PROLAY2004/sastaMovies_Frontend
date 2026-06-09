@@ -5,9 +5,8 @@ import { toast } from "react-toastify";
 
 import setContent from "../pages/home/setContent.js";
 import isAuthenticated from "../utils/checkAuth.js";
-import getUser from "../utils/fetchUserDetails.js";
 
-function HeroSection({ randomContent, pageReload, refresh, LoginRequiredModal }) {
+function HeroSection({ randomContent, pageReload, refresh, LoginRequiredModal, savedContents }) {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [btnDisplay, setBtnDisplay] = useState(true);
@@ -19,19 +18,6 @@ function HeroSection({ randomContent, pageReload, refresh, LoginRequiredModal })
         }
         else {
             navigate(`/player/${randomContent?._id}`);
-        }
-    }
-
-    const userFetch = async () => {
-        if (isAuthenticated()) {
-            const userDetails = await getUser(navigate, toast);
-
-            if (userDetails.user.savedContents?.includes(randomContent?._id)) {
-                setBtnDisplay(false);
-            }
-            else {
-                setBtnDisplay(true);
-            }
         }
     }
 
@@ -58,8 +44,13 @@ function HeroSection({ randomContent, pageReload, refresh, LoginRequiredModal })
     }
 
     useEffect(() => {
-        userFetch();
-    }, [randomContent?._id, pageReload])
+        if (savedContents?.includes(randomContent?._id)) {
+            setBtnDisplay(false);
+        }
+        else {
+            setBtnDisplay(true);
+        }
+    }, [randomContent?._id, pageReload, savedContents])
 
     return (
         <div className="hero-wrapper position-relative w-100 overflow-hidden">

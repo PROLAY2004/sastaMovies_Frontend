@@ -3,7 +3,6 @@ import { toast } from 'react-toastify';
 import { useState, useEffect } from 'react';
 
 import isAuthenticated from '../utils/checkAuth.js';
-import getUser from '../utils/fetchUserDetails.js';
 import setContent from '../pages/home/setContent.js';
 
 function MovieCards(cardDetails) {
@@ -17,17 +16,6 @@ function MovieCards(cardDetails) {
             cardDetails.LoginRequiredModal(true);
         } else {
             navigate(`/player/${cardDetails.movie?._id}`);
-        }
-    }
-
-    const userFetch = async () => {
-        if (isAuthenticated()) {
-            const userDetails = await getUser(navigate, toast);
-            if (userDetails.user.savedContents?.includes(cardDetails.movie?._id)) {
-                setBtnDisplay(false);
-            } else {
-                setBtnDisplay(true);
-            }
         }
     }
 
@@ -47,8 +35,13 @@ function MovieCards(cardDetails) {
     }
 
     useEffect(() => {
-        userFetch();
-    }, [cardDetails.movie?._id, cardDetails.pageReload])
+        if (cardDetails.savedContents?.includes(cardDetails.movie?._id)) {
+            setBtnDisplay(false);
+        }
+        else {
+            setBtnDisplay(true);
+        }
+    }, [cardDetails.movie?._id, cardDetails.pageReload, cardDetails.savedContents])
 
     return (
         <div className="col-6 col-sm-4 col-md-3 col-lg-2">

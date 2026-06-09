@@ -20,35 +20,33 @@ function SeriesCards(cardDetails) {
         }
     }
 
-    const userFetch = async () => {
-        if (isAuthenticated()) {
-            const userDetails = await getUser(navigate, toast);
-            if (userDetails.user.savedContents?.includes(cardDetails.series?._id)) {
-                setBtnDisplay(false);
-            } else {
-                setBtnDisplay(true);
-            }
-        }
-    }
 
     const handleSet = async (e, contentId) => {
         e.stopPropagation();
         setLoading(true);
+
         if (!isAuthenticated()) {
             toast.error('Please log in to save.', { position: 'top-right', theme: 'dark' });
         } else {
             const isSuccess = await setContent(navigate, toast, contentId)
+
             if (isSuccess) {
                 setBtnDisplay(!btnDisplay);
                 cardDetails.refresh((prev) => prev + 1)
             }
         }
+        
         setLoading(false);
     }
 
     useEffect(() => {
-        userFetch();
-    }, [cardDetails.series?._id, cardDetails.pageReload])
+        if (cardDetails.savedContents?.includes(cardDetails.series?._id)) {
+            setBtnDisplay(false);
+        }
+        else {
+            setBtnDisplay(true);
+        }
+    }, [cardDetails.series?._id, cardDetails.pageReload, cardDetails.savedContents])
 
     return (
         <div className="col-6 col-sm-4 col-md-3 col-lg-2">

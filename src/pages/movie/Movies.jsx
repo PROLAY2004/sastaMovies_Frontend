@@ -7,8 +7,10 @@ import Nav from '../../components/Navbar.jsx';
 import Footer from '../../components/Footer.jsx';
 import displayMovies from './fetchMovies.js';
 import MovieCards from '../../components/MovieCards.jsx';
+import getUser from '../../utils/fetchUserDetails.js';
 import LoginRequiredModal from '../../components/modals/LoginRequiredModal.jsx';
 import MovieLoader from '../../components/Loader/MovieLoader.jsx';
+import isAuthenticated from '../../utils/checkAuth.js';
 
 function Movies() {
 	const navigate = useNavigate();
@@ -19,6 +21,7 @@ function Movies() {
 	const [loading, setLoading] = useState(true);
 	const [showLoginModal, setShowLoginModal] = useState(false);
 	const [pageReload, setPageReload] = useState(0);
+	const [savedContents, setSavedContents] = useState([]);
 
 	// 1. Add a ref to track the previous value of pageReload
 	const prevPageReload = useRef(pageReload);
@@ -70,6 +73,16 @@ function Movies() {
 		setLoading(false);
 	};
 
+	const fetchUser = async () => {
+		if (isAuthenticated()) {
+			const userDetails = await getUser(navigate, toast);
+
+			if (userDetails?.user?.savedContents) {
+				setSavedContents(userDetails.user.savedContents);
+			}
+		}
+	}
+
 	// Apply button triggers the filter updates
 	const applyFilters = () => {
 		setActiveFilters(prev => ({
@@ -113,6 +126,7 @@ function Movies() {
 		// If it IS a bookmark refresh, pass 'false' to hide the loader. 
 		// If it's a filter change or initial mount, pass 'true' to show the loader.
 		handleDisplay(!isBookmarkRefresh);
+		fetchUser();
 
 		// Update the ref to the current value
 		prevPageReload.current = pageReload;
@@ -230,6 +244,7 @@ function Movies() {
 								pageReload={pageReload}
 								refresh={setPageReload}
 								LoginRequiredModal={(showModal) => setShowLoginModal(showModal)}
+								savedContents={savedContents}
 							/>
 						))}
 					</div>

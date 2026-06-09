@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
 import '../../styles/movie.scss';
@@ -8,14 +9,18 @@ import displaySeries from './fetchSeries.js';
 import SeriesCards from '../../components/SeriesCards.jsx';
 import LoginRequiredModal from '../../components/modals/LoginRequiredModal.jsx';
 import MovieLoader from '../../components/Loader/MovieLoader.jsx';
+import isAuthenticated from '../../utils/checkAuth.js';
+import getUser from '../../utils/fetchUserDetails.js';
 
 function Series() {
 	// Series List States
+	const navigate = useNavigate();
 	const [series, setSeries] = useState([]);
 	const [isEmpty, setIsEmpty] = useState(false);
 	const [loading, setLoading] = useState(true);
 	const [showLoginModal, setShowLoginModal] = useState(false);
 	const [pageReload, setPageReload] = useState(0);
+	const [savedContents, setSavedContents] = useState([]);
 
 	// 1. Add a ref to track the previous value of pageReload
 	const prevPageReload = useRef(pageReload);
@@ -67,6 +72,16 @@ function Series() {
 		setLoading(false);
 	};
 
+	const fetchUser = async () => {
+		if (isAuthenticated()) {
+			const userDetails = await getUser(navigate, toast);
+
+			if (userDetails?.user?.savedContents) {
+				setSavedContents(userDetails.user.savedContents);
+			}
+		}
+	}
+
 	// Apply button triggers the filter updates
 	const applyFilters = () => {
 		setActiveFilters(prev => ({
@@ -110,6 +125,7 @@ function Series() {
 		// If it IS a bookmark refresh, pass 'false' to hide the loader. 
 		// If it's a filter change or initial mount, pass 'true' to show the loader.
 		handleDisplay(!isBookmarkRefresh);
+		fetchUser();
 
 		// Update the ref to the current value
 		prevPageReload.current = pageReload;
@@ -226,6 +242,7 @@ function Series() {
 								pageReload={pageReload}
 								refresh={setPageReload}
 								LoginRequiredModal={(showModal) => setShowLoginModal(showModal)}
+								savedContents={savedContents}
 							/>
 						))}
 					</div>
