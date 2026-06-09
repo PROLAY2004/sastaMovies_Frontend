@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from 'react-toastify';
 
@@ -24,12 +24,17 @@ function ContentPlayer() {
     const clickTimeoutRef = useRef(null);
     const seekTimeoutRef = useRef(null);
 
+    // Stream Recovery Refs
+    const stallTimerRef = useRef(null);
+    const lastCurrentTimeRef = useRef(0);
+    const isRecoveringRef = useRef(false);
+
     // Gestures & Interaction Refs
     const holdTimeoutRef = useRef(null);
     const isHoldingRef = useRef(false);
     const ignoreNextClickRef = useRef(false);
     const initialPinchDistRef = useRef(null);
-    const touchStartRef = useRef(null); // Track 1-finger swipe for Volume/Brightness
+    const touchStartRef = useRef(null);
     const gestureTimeoutRef = useRef(null);
 
     // ==========================================
@@ -46,7 +51,7 @@ function ContentPlayer() {
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
     const [volume, setVolume] = useState(1);
-    const [brightness, setBrightness] = useState(1); // Faux brightness (0.1 to 1)
+    const [brightness, setBrightness] = useState(1);
     const [isMuted, setIsMuted] = useState(false);
     const [playbackRate, setPlaybackRate] = useState(1);
     const [isFullscreen, setIsFullscreen] = useState(false);
@@ -58,10 +63,9 @@ function ContentPlayer() {
     const [isDraggingProgress, setIsDraggingProgress] = useState(false);
     const [isDraggingVolume, setIsDraggingVolume] = useState(false);
 
-    // Advanced UI States
     const [showSpeedBadge, setShowSpeedBadge] = useState(false);
     const [isZoomed, setIsZoomed] = useState(false);
-    const [gestureInfo, setGestureInfo] = useState(null); // { type: 'volume' | 'brightness', value: 0-1 }
+    const [gestureInfo, setGestureInfo] = useState(null);
 
     // ==========================================
     // 3. DATA FETCHING
@@ -85,7 +89,97 @@ function ContentPlayer() {
     }, [contentData, seasonIndex]);
 
     // ==========================================
-    // 4. TIMERS & HELPERS
+    // 4. STREAM RECOVERY & MONITORING (Consolidated)
+    // ==========================================
+    const recoverPlayback = useCallback(() => {
+        const video = videoRef.current;
+        if (!video || isRecoveringRef.current) return;
+
+        console.log("Recovering stalled stream...");
+        isRecoveringRef.current = true;
+        setIsVideoBuffering(true);
+
+        const currentPosition = video.currentTime;
+        const wasPaused = video.paused;
+
+        video.load();
+
+        video.addEventListener("loadedmetadata", () => {
+            video.currentTime = currentPosition;
+            if (!wasPaused) {
+                video.play().catch(() => console.warn("Autoplay prevented on recovery"));
+            }
+            isRecoveringRef.current = false;
+        }, { once: true });
+    }, []);
+
+    useEffect(() => {
+        // 1. Frozen Playback Interval Checker (10s)
+        const frozenCheckInterval = setInterval(() => {
+            const video = videoRef.current;
+            if (!video || video.paused || video.ended || isRecoveringRef.current) return;
+
+            const current = video.currentTime;
+
+            // If time hasn't changed but video is supposed to be playing
+            if (
+                Math.abs(current - lastCurrentTimeRef.current) < 0.1 &&
+                video.readyState < 3
+            ){
+                console.log("Playback frozen detected by interval");
+                recoverPlayback();
+            }
+            lastCurrentTimeRef.current = current;
+        }, 10000);
+
+        // 2. Native Event Listeners
+        const video = videoRef.current;
+        if (!video) return;
+
+        const handleStalled = () => {
+            console.log("Video stalled or errored");
+            clearTimeout(stallTimerRef.current);
+            // Wait 5 seconds to see if it recovers naturally before forcing a reload
+            stallTimerRef.current = setTimeout(() => {
+                recoverPlayback();
+            }, 10000);
+        };
+
+        const handlePlaying = () => {
+            clearTimeout(stallTimerRef.current);
+            setIsVideoBuffering(false);
+            isRecoveringRef.current = false;
+        };
+
+        video.addEventListener("stalled", handleStalled);
+        video.addEventListener("error", handleStalled);
+        video.addEventListener("playing", handlePlaying);
+
+        return () => {
+            clearInterval(frozenCheckInterval);
+            clearTimeout(stallTimerRef.current);
+            video.removeEventListener("stalled", handleStalled);
+            video.removeEventListener("error", handleStalled);
+            video.removeEventListener("playing", handlePlaying);
+        };
+    }, [recoverPlayback]);
+
+    // Diagnostic Handlers for JSX
+    const handleSuspendLogs = () => {
+        const v = videoRef.current;
+        if (!v) return;
+        console.log("Stream Suspended:", {
+            currentTime: v.currentTime,
+            duration: v.duration,
+            readyState: v.readyState,
+            networkState: v.networkState,
+            paused: v.paused,
+            buffered: v.buffered.length > 0 ? v.buffered.end(v.buffered.length - 1) : 0,
+        });
+    };
+
+    // ==========================================
+    // 5. TIMERS & HELPERS
     // ==========================================
     const getClientX = (e) => e.touches && e.touches.length > 0 ? e.touches[0].clientX : e.clientX;
 
@@ -155,7 +249,7 @@ function ContentPlayer() {
     };
 
     // ==========================================
-    // 5. PLAYER CONTROLS
+    // 6. PLAYER CONTROLS
     // ==========================================
     const togglePlay = () => {
         if (videoRef.current.paused) {
@@ -174,15 +268,12 @@ function ContentPlayer() {
 
     const handleVideoClick = (e) => {
         if (ignoreNextClickRef.current) return;
-
-        // Prevent click events if we just finished a swipe gesture
         if (touchStartRef.current && touchStartRef.current.swiped) return;
 
         const rect = e.target.getBoundingClientRect();
         const clientX = e.clientX;
 
         if (clickTimeoutRef.current) {
-            // DOUBLE CLICK / TAP: Skip
             clearTimeout(clickTimeoutRef.current);
             clickTimeoutRef.current = null;
             const isRightSide = clientX > rect.left + (rect.width / 2);
@@ -190,19 +281,13 @@ function ContentPlayer() {
             if (isRightSide) skip(10);
             else skip(-10);
         } else {
-            // SINGLE CLICK / TAP
             clickTimeoutRef.current = setTimeout(() => {
                 const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
                 if (isTouchDevice) {
-                    // Mobile: Toggle Controls
                     setIsIdle((prevIdle) => {
-                        const newIdleState = !prevIdle; // Toggle the state
-
-                        // Clear any existing timers
+                        const newIdleState = !prevIdle;
                         if (idleTimeoutRef.current) clearTimeout(idleTimeoutRef.current);
-
-                        // If we are SHOWING controls (!newIdleState), start the 5s auto-hide timer
                         if (!newIdleState) {
                             idleTimeoutRef.current = setTimeout(() => {
                                 if (videoRef.current && !videoRef.current.paused) {
@@ -210,11 +295,9 @@ function ContentPlayer() {
                                 }
                             }, 5000);
                         }
-
                         return newIdleState;
                     });
                 } else {
-                    // PC: Play / Pause
                     togglePlay();
                 }
 
@@ -271,7 +354,7 @@ function ContentPlayer() {
     };
 
     // ==========================================
-    // 6. SCRUBBING
+    // 7. SCRUBBING
     // ==========================================
     const handleTimeUpdate = () => {
         if (!isDraggingProgress && videoRef.current) {
@@ -304,7 +387,7 @@ function ContentPlayer() {
     };
 
     // ==========================================
-    // 7. GLOBAL EVENT LISTENERS
+    // 8. GLOBAL EVENT LISTENERS
     // ==========================================
     useEffect(() => {
         const handleMove = (e) => {
@@ -402,7 +485,7 @@ function ContentPlayer() {
     }, []);
 
     // ==========================================
-    // 8. RENDER VARIABLES
+    // 9. RENDER VARIABLES
     // ==========================================
     const progressPercentage = duration ? (currentTime / duration) * 100 : 0;
     const volumePercentage = isMuted ? 0 : volume * 100;
@@ -425,13 +508,12 @@ function ContentPlayer() {
                         <div
                             className={`custom-player-wrapper ${isIdle ? 'is-idle' : ''} ${!isPlaying ? 'is-paused' : ''}`}
                             onPointerMove={(e) => {
-                                // ONLY trigger for actual mouse movement, ignore touch-synthesized moves
                                 if (e.pointerType === 'mouse') resetIdleTimer();
                             }}
                             onMouseEnter={resetIdleTimer}
                             onMouseLeave={handlePlayerMouseLeave}
                             ref={playerContainerRef}
-                            style={{ touchAction: 'none' }} // Crucial to prevent page scrolling while swiping
+                            style={{ touchAction: 'none' }}
                         >
                             <video
                                 ref={videoRef}
@@ -445,8 +527,15 @@ function ContentPlayer() {
                                 onEnded={() => setIsPlaying(false)}
                                 onContextMenu={(e) => e.preventDefault()}
                                 onLoadStart={() => setIsVideoBuffering(true)}
-                                onWaiting={() => setIsVideoBuffering(true)}
-                                onPlaying={() => setIsVideoBuffering(false)}
+
+                                // Cleaned up inline logging
+                                onWaiting={() => {
+                                    console.log("Stream waiting...");
+                                    setIsVideoBuffering(true);
+                                }}
+                                onStalled={() => console.log("Stream stalled event fired")}
+                                onSuspend={handleSuspendLogs}
+                                onError={(e) => console.log("Video error:", e)}
                                 onCanPlay={() => {
                                     if (videoRef.current && videoRef.current.paused) setIsVideoBuffering(false);
                                 }}
@@ -454,58 +543,47 @@ function ContentPlayer() {
                                 // --- MOBILE TOUCH & SWIPE EVENTS ---
                                 onTouchStart={(e) => {
                                     if (e.touches.length === 2 && isFullscreen && isPlaying) {
-                                        // Pinch Zoom Start
                                         const dist = Math.hypot(
                                             e.touches[0].clientX - e.touches[1].clientX,
                                             e.touches[0].clientY - e.touches[1].clientY
                                         );
                                         initialPinchDistRef.current = dist;
                                     } else if (e.touches.length === 1 && isFullscreen && isPlaying) {
-                                        // Volume & Brightness Swipe Start
                                         const touch = e.touches[0];
                                         touchStartRef.current = {
                                             y: touch.clientY,
                                             type: touch.clientX < window.innerWidth / 2 ? 'brightness' : 'volume',
                                             startVol: volume,
                                             startBright: brightness,
-                                            swiped: false // Used to prevent click-to-pause if we swiped
+                                            swiped: false
                                         };
                                     }
                                 }}
-                                
+
                                 onTouchMove={(e) => {
                                     if (e.touches.length === 2 && initialPinchDistRef.current && isFullscreen && isPlaying) {
-                                        // Pinch Zoom Move
                                         const dist = Math.hypot(
                                             e.touches[0].clientX - e.touches[1].clientX,
                                             e.touches[0].clientY - e.touches[1].clientY
                                         );
 
-                                        // If fingers are moving for a pinch, cancel the 2x hold timer!
                                         if (Math.abs(dist - initialPinchDistRef.current) > 20) {
                                             endHoldTimer();
                                         }
 
-                                        // 40px threshold makes it feel intentional and less jittery
                                         if (dist > initialPinchDistRef.current + 40) {
-                                            setIsZoomed(true); // Zoom In
+                                            setIsZoomed(true);
                                         } else if (dist < initialPinchDistRef.current - 40) {
-                                            setIsZoomed(false); // Zoom Out
+                                            setIsZoomed(false);
                                         }
                                     } else if (e.touches.length === 1 && touchStartRef.current && isFullscreen && isPlaying) {
-                                        // Volume & Brightness Swipe Move
                                         const touch = e.touches[0];
-                                        const deltaY = touchStartRef.current.y - touch.clientY; // UP is positive
+                                        const deltaY = touchStartRef.current.y - touch.clientY;
 
-                                        // Require a 20px drag before activating (prevents accidental triggers on taps)
                                         if (Math.abs(deltaY) > 20) {
                                             touchStartRef.current.swiped = true;
-
-                                            // --- THE FIX: Instantly cancel 2x speed if the finger is swiping! ---
                                             endHoldTimer();
-                                            // -------------------------------------------------------------------
 
-                                            // 1.5 multiplier makes the swipe feel responsive
                                             const change = (deltaY / window.innerHeight) * 1.5;
 
                                             if (touchStartRef.current.type === 'volume') {
@@ -525,15 +603,13 @@ function ContentPlayer() {
                                     }
                                 }}
 
-                                onTouchEnd={(e) => {
+                                onTouchEnd={() => {
                                     initialPinchDistRef.current = null;
-                                    // Reset swipe state after a short delay so onClick doesn't accidentally trigger
                                     if (touchStartRef.current) {
                                         setTimeout(() => { touchStartRef.current = null; }, 100);
                                     }
                                 }}
 
-                                // Pointer events for the Hold-to-2x speed
                                 onPointerDown={(e) => {
                                     if (!e.isPrimary || !isPlaying) return;
                                     startHoldTimer();
@@ -547,7 +623,6 @@ function ContentPlayer() {
                                 onPointerLeave={() => endHoldTimer()}
                                 onPointerCancel={() => endHoldTimer()}
 
-                                // Apply Dynamic Zoom & Brightness
                                 style={{
                                     objectFit: (isFullscreen && isZoomed) ? 'cover' : 'contain',
                                     filter: `brightness(${brightness})`
@@ -685,7 +760,6 @@ function ContentPlayer() {
                             </div>
                         </div>
 
-                        {/* Series Details Unchanged... */}
                         <div className="series-content-box mt-4">
                             <div className="d-flex justify-content-between flex-wrap gap-3 mb-4">
                                 <div>
