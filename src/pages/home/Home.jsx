@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 
 import '../../styles/home.scss';
 import isAuthenticated from '../../utils/checkAuth.js';
+import getUser from '../../utils/fetchUserDetails.js';
 import Nav from '../../components/Navbar.jsx';
 import HomeLoader from '../../components/Loader/HomeLoader.jsx';
 import HeroSection from '../../components/HeroSection.jsx';
@@ -23,6 +24,8 @@ function Home() {
 	const [moviesEmptyState, setMoviesEmptyState] = useState(true);
 	const [seriesEmptyState, setSeriesEmptyState] = useState(true);
 	const [showLoginModal, setShowLoginModal] = useState(false);
+	const [savedContents, setSavedContents] = useState([]);
+
 	const handleDisplay = async () => {
 		const isSuccess = await displayHome(navigate, toast);
 
@@ -42,13 +45,27 @@ function Home() {
 		}
 	}
 
+	const fetchUser = async () => {
+		if (isAuthenticated()) {
+			const userDetails = await getUser(navigate, toast);
+
+			if (userDetails?.user?.savedContents) {
+				setSavedContents(userDetails.user.savedContents);
+			}
+		}
+	}
+
 	useEffect(() => {
 		handleDisplay();
 
 		if(isAuthenticated()){
 			setDisplaySubscribe(false);
 		}
-	}, [pageReload])
+	}, [])
+
+	useEffect(() => {
+		fetchUser();
+	}, [pageReload]); // Only depends on pageReload
 
 	const saveContent = () => {
 		if (!isAuthenticated()) {
@@ -66,7 +83,13 @@ function Home() {
 			<HomeLoader loading={loading} />
 
 			<main style={{ display: loading ? 'none' : 'block' }}>
-				<HeroSection randomContent={randomContent} pageReload={pageReload} refresh={setPageReload} LoginRequiredModal={(showModal) => setShowLoginModal(showModal)} />
+				<HeroSection 
+				randomContent={randomContent} 
+				pageReload={pageReload} 
+				refresh={setPageReload} 
+				LoginRequiredModal={(showModal) => setShowLoginModal(showModal)}
+				savedContents={savedContents}
+				/>
 
 				<div className="container py-3">
 					<div className="section-header">
@@ -77,7 +100,14 @@ function Home() {
 					</div>
 					<div className="row g-4">
 						{movies.map((movie) => (
-							<MovieCards key={movie._id} movie={movie} pageReload={pageReload} refresh={setPageReload} LoginRequiredModal={(showModal) => setShowLoginModal(showModal)} />
+							<MovieCards 
+							key={movie._id} 
+							movie={movie} 
+							pageReload={pageReload} 
+							refresh={setPageReload} 
+							LoginRequiredModal={(showModal) => setShowLoginModal(showModal)} 
+							savedContents={savedContents}
+							/>
 						))}
 
 						<div className="movie-card text-center py-3" style={{ display: moviesEmptyState ? 'block' : 'none' }}>
@@ -111,7 +141,14 @@ function Home() {
 					</div>
 					<div className="row g-4">
 						{series.map((series) => (
-							<SeriesCards key={series._id} series={series} pageReload={pageReload} refresh={setPageReload} LoginRequiredModal={(showModal) => setShowLoginModal(showModal)} />
+							<SeriesCards 
+							key={series._id} 
+							series={series} 
+							pageReload={pageReload} 
+							refresh={setPageReload} 
+							LoginRequiredModal={(showModal) => setShowLoginModal(showModal)} 
+							savedContents={savedContents}
+							/>
 						))}
 
 						<div className="movie-card text-center py-3" style={{ display: seriesEmptyState ? 'block' : 'none' }}>

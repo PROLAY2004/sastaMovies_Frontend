@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
@@ -7,8 +7,10 @@ import Nav from '../../components/Navbar.jsx';
 import Footer from '../../components/Footer.jsx';
 import displayMovies from './fetchMovies.js';
 import MovieCards from '../../components/MovieCards.jsx';
+import getUser from '../../utils/fetchUserDetails.js';
 import LoginRequiredModal from '../../components/modals/LoginRequiredModal.jsx';
 import MovieLoader from '../../components/Loader/MovieLoader.jsx';
+import isAuthenticated from '../../utils/checkAuth.js';
 
 function Movies() {
 	const navigate = useNavigate();
@@ -19,9 +21,7 @@ function Movies() {
 	const [loading, setLoading] = useState(true);
 	const [showLoginModal, setShowLoginModal] = useState(false);
 	const [pageReload, setPageReload] = useState(0);
-
-	// 1. Add a ref to track the previous value of pageReload
-	const prevPageReload = useRef(pageReload);
+	const [savedContents, setSavedContents] = useState([]);
 
 	// Dynamic Dropdown Options (fetched from DB)
 	const [filterOptions, setFilterOptions] = useState({ genres: [], years: [], ratings: [] });
@@ -70,6 +70,16 @@ function Movies() {
 		setLoading(false);
 	};
 
+	const fetchUser = async () => {
+		if (isAuthenticated()) {
+			const userDetails = await getUser(navigate, toast);
+
+			if (userDetails?.user?.savedContents) {
+				setSavedContents(userDetails.user.savedContents);
+			}
+		}
+	}
+
 	// Apply button triggers the filter updates
 	const applyFilters = () => {
 		setActiveFilters(prev => ({
@@ -105,18 +115,13 @@ function Movies() {
 		return () => clearTimeout(delaySearch);
 	}, [searchInput]);
 
-	// 3. Fetch data whenever activeFilters change or page is reloaded via bookmark
 	useEffect(() => {
-		// If pageReload changed, it means a bookmark was clicked. We want a silent refresh.
-		const isBookmarkRefresh = prevPageReload.current !== pageReload;
+		handleDisplay(true);
+	}, [activeFilters]);
 
-		// If it IS a bookmark refresh, pass 'false' to hide the loader. 
-		// If it's a filter change or initial mount, pass 'true' to show the loader.
-		handleDisplay(!isBookmarkRefresh);
-
-		// Update the ref to the current value
-		prevPageReload.current = pageReload;
-	}, [activeFilters, pageReload]);
+	useEffect(() => {
+		fetchUser();
+	}, [pageReload]);
 
 	return (
 		<>
@@ -230,6 +235,7 @@ function Movies() {
 								pageReload={pageReload}
 								refresh={setPageReload}
 								LoginRequiredModal={(showModal) => setShowLoginModal(showModal)}
+								savedContents={savedContents}
 							/>
 						))}
 					</div>
