@@ -21,23 +21,28 @@ function HeroSection({ randomContent, pageReload, refresh, LoginRequiredModal, s
         }
     }
 
-    const handleSet = async (contentId) => {
-        setLoading(true);
-
+const handleSet = async (contentId) => {
         if (!isAuthenticated()) {
             toast.error('Please Login to save Content', {
                 position: 'top-right',
                 autoClose: 5000,
                 theme: 'dark',
             });
+            return; // Stop execution if not logged in
         }
-        else {
-            const isSuccess = await setContent(navigate, toast, contentId)
 
-            if (isSuccess) {
-                setBtnDisplay(!btnDisplay);
-                refresh((prev) => prev + 1)
-            }
+        // OPTIMISTIC UPDATE: Instantly flip the button for immediate visual feedback
+        setBtnDisplay((prev) => !prev);
+        setLoading(true);
+
+        const isSuccess = await setContent(navigate, toast, contentId);
+
+        if (isSuccess) {
+            // Trigger the parent to silently update the background array
+            refresh((prev) => prev + 1);
+        } else {
+            // If API fails, revert the button back
+            setBtnDisplay((prev) => !prev);
         }
 
         setLoading(false);
@@ -50,7 +55,7 @@ function HeroSection({ randomContent, pageReload, refresh, LoginRequiredModal, s
         else {
             setBtnDisplay(true);
         }
-    }, [randomContent?._id, pageReload, savedContents])
+    }, [randomContent?._id, savedContents])
 
     return (
         <div className="hero-wrapper position-relative w-100 overflow-hidden">
@@ -104,7 +109,7 @@ function HeroSection({ randomContent, pageReload, refresh, LoginRequiredModal, s
                                                 {loading ? (
                                                     <>
                                                         <div className="spinner-border spinner-border-sm" role="status"></div>
-                                                        <span>Saving...</span>
+                                                        <span>Removing...</span>
                                                     </>
                                                 ) : (
                                                     <>
@@ -117,7 +122,7 @@ function HeroSection({ randomContent, pageReload, refresh, LoginRequiredModal, s
                                                 {loading ? (
                                                     <>
                                                         <div className="spinner-border spinner-border-sm" role="status"></div>
-                                                        <span>Removing...</span>
+                                                        <span>Saving...</span>
                                                     </>
                                                 ) : (
                                                     <>
