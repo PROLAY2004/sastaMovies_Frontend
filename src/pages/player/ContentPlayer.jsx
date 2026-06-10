@@ -95,7 +95,6 @@ function ContentPlayer() {
         const video = videoRef.current;
         if (!video || isRecoveringRef.current) return;
 
-        console.log("Recovering stalled stream...");
         isRecoveringRef.current = true;
         setIsVideoBuffering(true);
 
@@ -124,25 +123,26 @@ function ContentPlayer() {
             // If time hasn't changed but video is supposed to be playing
             if (
                 Math.abs(current - lastCurrentTimeRef.current) < 0.1 &&
+                !video.paused &&
+                !video.seeking &&
                 video.readyState < 3
-            ){
-                console.log("Playback frozen detected by interval");
+            ) {
                 recoverPlayback();
             }
+
             lastCurrentTimeRef.current = current;
-        }, 10000);
+        }, 3000);
 
         // 2. Native Event Listeners
         const video = videoRef.current;
         if (!video) return;
 
         const handleStalled = () => {
-            console.log("Video stalled or errored");
             clearTimeout(stallTimerRef.current);
             // Wait 5 seconds to see if it recovers naturally before forcing a reload
             stallTimerRef.current = setTimeout(() => {
                 recoverPlayback();
-            }, 10000);
+            }, 5000);
         };
 
         const handlePlaying = () => {
@@ -163,20 +163,6 @@ function ContentPlayer() {
             video.removeEventListener("playing", handlePlaying);
         };
     }, [recoverPlayback]);
-
-    // Diagnostic Handlers for JSX
-    const handleSuspendLogs = () => {
-        const v = videoRef.current;
-        if (!v) return;
-        console.log("Stream Suspended:", {
-            currentTime: v.currentTime,
-            duration: v.duration,
-            readyState: v.readyState,
-            networkState: v.networkState,
-            paused: v.paused,
-            buffered: v.buffered.length > 0 ? v.buffered.end(v.buffered.length - 1) : 0,
-        });
-    };
 
     // ==========================================
     // 5. TIMERS & HELPERS
@@ -285,18 +271,25 @@ function ContentPlayer() {
                 const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
                 if (isTouchDevice) {
-                    setIsIdle((prevIdle) => {
-                        const newIdleState = !prevIdle;
-                        if (idleTimeoutRef.current) clearTimeout(idleTimeoutRef.current);
-                        if (!newIdleState) {
-                            idleTimeoutRef.current = setTimeout(() => {
-                                if (videoRef.current && !videoRef.current.paused) {
-                                    setIsIdle(true);
-                                }
-                            }, 5000);
+                    if (!isIdle) {
+                        setIsIdle(true);
+
+                        if (idleTimeoutRef.current) {
+                            clearTimeout(idleTimeoutRef.current);
                         }
-                        return newIdleState;
-                    });
+                    } else {
+                        setIsIdle(false);
+
+                        if (idleTimeoutRef.current) {
+                            clearTimeout(idleTimeoutRef.current);
+                        }
+
+                        idleTimeoutRef.current = setTimeout(() => {
+                            if (videoRef.current && !videoRef.current.paused) {
+                                setIsIdle(true);
+                            }
+                        }, 5000);
+                    }
                 } else {
                     togglePlay();
                 }
@@ -527,15 +520,8 @@ function ContentPlayer() {
                                 onEnded={() => setIsPlaying(false)}
                                 onContextMenu={(e) => e.preventDefault()}
                                 onLoadStart={() => setIsVideoBuffering(true)}
-
-                                // Cleaned up inline logging
-                                onWaiting={() => {
-                                    console.log("Stream waiting...");
-                                    setIsVideoBuffering(true);
-                                }}
-                                onStalled={() => console.log("Stream stalled event fired")}
-                                onSuspend={handleSuspendLogs}
-                                onError={(e) => console.log("Video error:", e)}
+                                onWaiting={() => setIsVideoBuffering(true)}
+                                onError={(e) => console.error("Video error:", e.nativeEvent)}
                                 onCanPlay={() => {
                                     if (videoRef.current && videoRef.current.paused) setIsVideoBuffering(false);
                                 }}
