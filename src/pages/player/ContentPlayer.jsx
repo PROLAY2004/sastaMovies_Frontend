@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import '../../styles/player.scss';
 import configaruration from '../../config/config.js';
 import displayPlayer from './fetchContent.js';
+import saveProgress from './saveProgress.js';
 import PlayerLoader from '../../components/PlayerLoader.jsx';
 import ImdbCard from '../../components/ImdbCard.jsx';
 
@@ -36,6 +37,8 @@ function ContentPlayer() {
     const initialPinchDistRef = useRef(null);
     const touchStartRef = useRef(null);
     const gestureTimeoutRef = useRef(null);
+    const saveIntervalRef = useRef(null);
+    const hasResumedRef = useRef(false);
 
     // ==========================================
     // 2. STATE
@@ -76,6 +79,7 @@ function ContentPlayer() {
             const isSuccess = await displayPlayer(navigate, toast, contentId);
             if (isSuccess) {
                 setLoading(false);
+                console.log(isSuccess.contentInfo);
                 setContentData(isSuccess.contentInfo);
             }
         };
@@ -111,6 +115,43 @@ function ContentPlayer() {
             isRecoveringRef.current = false;
         }, { once: true });
     }, []);
+
+    const syncProgressToServer = useCallback(() => {
+        const video = videoRef.current;
+        if (!video || !contentData?._id) return;
+
+        // Streamed videos sometimes return Infinity or NaN for duration initially
+        let safeDuration = video.duration;
+        if (isNaN(safeDuration) || safeDuration === Infinity) {
+            safeDuration = 0;
+        }
+
+        const dataToSave = {
+            contentId: contentData._id,
+            contentName: contentData?.title || 'Unknown',
+            contentType: contentData?.contentType || 'movie',
+            seasonNumber: seasonIndex,
+            episodeNumber: episodeIndex,
+            lastPosition: video.currentTime,
+            duration: safeDuration // Sent safely
+        };
+
+        // Fire and forget
+        saveProgress(navigate, toast, dataToSave).catch(err => console.error("Save failed:", err));
+    }, [contentData, seasonIndex, episodeIndex, navigate, toast]);
+
+    useEffect(() => {
+        if (saveIntervalRef.current) clearInterval(saveIntervalRef.current);
+
+        saveIntervalRef.current = setInterval(() => {
+            const video = videoRef.current;
+            if (video && !video.paused && video.readyState >= 2) {
+                syncProgressToServer();
+            }
+        }, 20000); // 20 Seconds
+
+        return () => clearInterval(saveIntervalRef.current);
+    }, [syncProgressToServer]);
 
     useEffect(() => {
         // 1. Frozen Playback Interval Checker (10s)
@@ -355,7 +396,27 @@ function ContentPlayer() {
         }
     };
 
-    const handleLoadedMetadata = () => setDuration(videoRef.current.duration);
+    const handleLoadedMetadata = () => {
+        const video = videoRef.current;
+        if (!video) return;
+        setDuration(video.duration);
+
+        // If we have saved progress from the 'player' controller, resume it
+        if (!hasResumedRef.current && contentData?.userProgress) {
+            const savedProgress = contentData.userProgress.find(
+                p => p.seasonNumber === seasonIndex && p.episodeNumber === episodeIndex
+            );
+
+            if (savedProgress && savedProgress.lastPosition > 0) {
+                // Only resume if they haven't finished the whole video (e.g., watched < 95%)
+                if (!savedProgress.isCompleted && savedProgress.lastPosition < video.duration - 10) {
+                    video.currentTime = savedProgress.lastPosition;
+                    toast.info(`Resumed at ${formatTime(savedProgress.lastPosition)}`, { theme: 'dark', autoClose: 3000 });
+                }
+            }
+            hasResumedRef.current = true;
+        }
+    };
 
     const handleProgressScrub = (e) => {
         if (progressRef.current && duration > 0) {
@@ -520,6 +581,7 @@ function ContentPlayer() {
                                 onEnded={() => setIsPlaying(false)}
                                 onContextMenu={(e) => e.preventDefault()}
                                 onLoadStart={() => setIsVideoBuffering(true)}
+                                onPause={syncProgressToServer}
                                 onWaiting={() => setIsVideoBuffering(true)}
                                 onError={(e) => console.error("Video error:", e.nativeEvent)}
                                 onCanPlay={() => {

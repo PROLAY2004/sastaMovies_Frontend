@@ -1,13 +1,13 @@
 import apiInterceptor from '../../api/interceptor.js';
 
-export default async function displayPlayer(navigate, toast, contentId) {
+export default async function saveProgress(navigate, toast, data) {
 	try {
 		const response = await apiInterceptor(
 			navigate,
 			toast,
 			'POST',
-			'/user/fetch-player',
-			{ contentId },
+			'/user/save-progress',
+			data,
 		);
 
 		const result = await response.json();
