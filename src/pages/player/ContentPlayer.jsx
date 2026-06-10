@@ -124,13 +124,15 @@ function ContentPlayer() {
             // If time hasn't changed but video is supposed to be playing
             if (
                 Math.abs(current - lastCurrentTimeRef.current) < 0.1 &&
+                !video.paused &&
+                !video.seeking &&
                 video.readyState < 3
-            ){
-                console.log("Playback frozen detected by interval");
+            ) {
                 recoverPlayback();
             }
+
             lastCurrentTimeRef.current = current;
-        }, 10000);
+        }, 3000);
 
         // 2. Native Event Listeners
         const video = videoRef.current;
@@ -142,7 +144,7 @@ function ContentPlayer() {
             // Wait 5 seconds to see if it recovers naturally before forcing a reload
             stallTimerRef.current = setTimeout(() => {
                 recoverPlayback();
-            }, 10000);
+            }, 5000);
         };
 
         const handlePlaying = () => {
@@ -285,18 +287,25 @@ function ContentPlayer() {
                 const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
                 if (isTouchDevice) {
-                    setIsIdle((prevIdle) => {
-                        const newIdleState = !prevIdle;
-                        if (idleTimeoutRef.current) clearTimeout(idleTimeoutRef.current);
-                        if (!newIdleState) {
-                            idleTimeoutRef.current = setTimeout(() => {
-                                if (videoRef.current && !videoRef.current.paused) {
-                                    setIsIdle(true);
-                                }
-                            }, 5000);
+                    if (!isIdle) {
+                        setIsIdle(true);
+
+                        if (idleTimeoutRef.current) {
+                            clearTimeout(idleTimeoutRef.current);
                         }
-                        return newIdleState;
-                    });
+                    } else {
+                        setIsIdle(false);
+
+                        if (idleTimeoutRef.current) {
+                            clearTimeout(idleTimeoutRef.current);
+                        }
+
+                        idleTimeoutRef.current = setTimeout(() => {
+                            if (videoRef.current && !videoRef.current.paused) {
+                                setIsIdle(true);
+                            }
+                        }, 5000);
+                    }
                 } else {
                     togglePlay();
                 }
