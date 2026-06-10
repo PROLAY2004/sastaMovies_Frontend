@@ -105,11 +105,17 @@ function Series() {
 		});
 	};
 
-	// Debounce the search input
+	// Debounce the search input to wait until the user stops typing
 	useEffect(() => {
 		const delaySearch = setTimeout(() => {
-			setActiveFilters(prev => ({ ...prev, searchQuery: searchInput }));
-		}, 500);
+			setActiveFilters(prev => {
+				// Prevent state update on initial load if the string is identical
+				if (prev.searchQuery === searchInput) {
+					return prev; // Returning the exact same reference stops the re-render
+				}
+				return { ...prev, searchQuery: searchInput };
+			});
+		}, 500); // Waits 500ms after last keystroke
 
 		return () => clearTimeout(delaySearch);
 	}, [searchInput]);
