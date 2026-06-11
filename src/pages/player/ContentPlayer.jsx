@@ -38,7 +38,11 @@ function ContentPlayer() {
     const touchStartRef = useRef(null);
     const gestureTimeoutRef = useRef(null);
     const saveIntervalRef = useRef(null);
-    const hasResumedRef = useRef(false);
+    const lastResumedKeyRef = useRef(null);
+    const isResumingRef = useRef(false);
+    const postSeekSaveTimeoutRef = useRef(null);
+    const lastSavedPositionRef = useRef(-1);
+    const hasMarkedCompletedRef = useRef(false);
 
     // ==========================================
     // 2. STATE
@@ -71,16 +75,57 @@ function ContentPlayer() {
     const [gestureInfo, setGestureInfo] = useState(null);
 
     // ==========================================
-    // 3. DATA FETCHING
+    // 3. DATA FETCHING, AUTO-SELECT & RESUME RESETS
     // ==========================================
     useEffect(() => {
         window.scrollTo(0, 0);
         const fetchContent = async () => {
             const isSuccess = await displayPlayer(navigate, toast, contentId);
             if (isSuccess) {
+                const contentInfo = isSuccess.contentInfo;
+
+                // [NEW UPGRADE]: Smart Episode Auto-Selector for Series
+                if (contentInfo?.contentType === 'series' && contentInfo?.userProgress?.length > 0) {
+                    // Sort all progress to find the furthest reached episode
+                    const sortedProgress = [...contentInfo.userProgress].sort((a, b) => {
+                        if (a.seasonNumber !== b.seasonNumber) return a.seasonNumber - b.seasonNumber;
+                        return a.episodeNumber - b.episodeNumber;
+                    });
+
+                    const furthest = sortedProgress[sortedProgress.length - 1];
+
+                    if (!furthest.isCompleted) {
+                        // If furthest is incomplete, select it to resume
+                        setSeasonIndex(furthest.seasonNumber);
+                        setEpisodeIndex(furthest.episodeNumber);
+                    } else {
+                        // If furthest is completed, calculate the next logical episode
+                        let nextSeason = furthest.seasonNumber;
+                        let nextEpisode = furthest.episodeNumber + 1;
+
+                        // Does the next episode exist in the current season?
+                        if (contentInfo.contentIds?.[nextSeason]?.length > nextEpisode) {
+                            setSeasonIndex(nextSeason);
+                            setEpisodeIndex(nextEpisode);
+                        } else {
+                            // Current season is done. Move to next season, episode 1 (index 0)
+                            nextSeason++;
+                            nextEpisode = 0;
+                            // Does the next season exist?
+                            if (contentInfo.contentIds?.length > nextSeason) {
+                                setSeasonIndex(nextSeason);
+                                setEpisodeIndex(nextEpisode);
+                            } else {
+                                // Series completed! Reset to S1 E1
+                                setSeasonIndex(0);
+                                setEpisodeIndex(0);
+                            }
+                        }
+                    }
+                }
+
+                setContentData(contentInfo);
                 setLoading(false);
-                console.log(isSuccess.contentInfo);
-                setContentData(isSuccess.contentInfo);
             }
         };
         fetchContent();
@@ -92,8 +137,15 @@ function ContentPlayer() {
         }
     }, [contentData, seasonIndex]);
 
+    useEffect(() => {
+        isResumingRef.current = false;
+        lastSavedPositionRef.current = -1;
+        hasMarkedCompletedRef.current = false;
+    }, [seasonIndex, episodeIndex]);
+
+
     // ==========================================
-    // 4. STREAM RECOVERY & MONITORING (Consolidated)
+    // 4. STREAM RECOVERY & PROGRESS SAVING
     // ==========================================
     const recoverPlayback = useCallback(() => {
         const video = videoRef.current;
@@ -116,15 +168,60 @@ function ContentPlayer() {
         }, { once: true });
     }, []);
 
-    const syncProgressToServer = useCallback(() => {
+    const syncProgressToServer = useCallback((isInterval = false) => {
         const video = videoRef.current;
         if (!video || !contentData?._id) return;
 
-        // Streamed videos sometimes return Infinity or NaN for duration initially
+        if (isResumingRef.current) return;
+
         let safeDuration = video.duration;
         if (isNaN(safeDuration) || safeDuration === Infinity) {
             safeDuration = 0;
         }
+
+        const currentPos = video.currentTime;
+        const threshold = safeDuration > 0 ? safeDuration * 0.95 : 999999;
+        const isNearEnd = safeDuration > 0 && currentPos >= threshold;
+
+        // 1. Is it already completed in DB?
+        let alreadyCompletedDB = false;
+        if (contentData?.userProgress) {
+            const p = contentData.userProgress.find(
+                x => x.seasonNumber === seasonIndex && x.episodeNumber === episodeIndex
+            );
+            if (p && (p.isCompleted || p.lastPosition >= threshold)) {
+                alreadyCompletedDB = true;
+            }
+        }
+
+        // 2. THE REWATCH DETECTOR (Reset completion if they start from beginning)
+        const isRestarting = currentPos < 60 || (safeDuration > 0 && currentPos < safeDuration * 0.05);
+
+        if ((hasMarkedCompletedRef.current || alreadyCompletedDB) && isRestarting) {
+            hasMarkedCompletedRef.current = false;
+            alreadyCompletedDB = false;
+        }
+
+        const isActuallyCompleted = hasMarkedCompletedRef.current || alreadyCompletedDB;
+
+        // 3. THE ANTI-CHEAT FIX: 
+        // If they scrub to >= 95% manually, ignore the save. Force them to wait for the 20s interval.
+        if (isNearEnd && !isInterval) {
+            return;
+        }
+
+        // 4. PREVENT SPAM: Ignore rapid saves
+        if (Math.abs(currentPos - lastSavedPositionRef.current) < 1) return;
+
+        // 5. THE ONE-AND-DONE LOCK FOR COMPLETION
+        if (isNearEnd && isInterval) {
+            hasMarkedCompletedRef.current = true;
+        }
+
+        lastSavedPositionRef.current = currentPos;
+
+        // If completed, save full duration. If below 95%, save exactly where they are!
+        const finalPositionToSave = (isNearEnd && isInterval) ? safeDuration : currentPos;
 
         const dataToSave = {
             contentId: contentData._id,
@@ -132,12 +229,42 @@ function ContentPlayer() {
             contentType: contentData?.contentType || 'movie',
             seasonNumber: seasonIndex,
             episodeNumber: episodeIndex,
-            lastPosition: video.currentTime,
-            duration: safeDuration // Sent safely
+            lastPosition: finalPositionToSave,
+            duration: safeDuration,
+            // Pass this to backend so it knows they scrubbed backwards but already completed it!
+            isCompleted: hasMarkedCompletedRef.current || alreadyCompletedDB
         };
 
-        // Fire and forget
-        saveProgress(navigate, toast, dataToSave).catch(err => console.error("Save failed:", err));
+        saveProgress(navigate, toast, dataToSave).then((success) => {
+            if (success) {
+                setContentData(prevData => {
+                    if (!prevData) return prevData;
+
+                    const currentProgress = prevData.userProgress || [];
+                    const updatedProgress = [...currentProgress];
+                    const existingIdx = updatedProgress.findIndex(
+                        p => p.seasonNumber === seasonIndex && p.episodeNumber === episodeIndex
+                    );
+
+                    if (existingIdx >= 0) {
+                        updatedProgress[existingIdx] = {
+                            ...updatedProgress[existingIdx],
+                            lastPosition: finalPositionToSave,
+                            isCompleted: hasMarkedCompletedRef.current || (updatedProgress[existingIdx].isCompleted && !isRestarting)
+                        };
+                    } else {
+                        updatedProgress.push({
+                            seasonNumber: seasonIndex,
+                            episodeNumber: episodeIndex,
+                            lastPosition: finalPositionToSave,
+                            isCompleted: hasMarkedCompletedRef.current
+                        });
+                    }
+
+                    return { ...prevData, userProgress: updatedProgress };
+                });
+            }
+        }).catch(err => console.error("Save failed:", err));
     }, [contentData, seasonIndex, episodeIndex, navigate, toast]);
 
     useEffect(() => {
@@ -146,22 +273,22 @@ function ContentPlayer() {
         saveIntervalRef.current = setInterval(() => {
             const video = videoRef.current;
             if (video && !video.paused && video.readyState >= 2) {
-                syncProgressToServer();
+                syncProgressToServer(true);
             }
-        }, 20000); // 20 Seconds
+        }, 20000);
 
         return () => clearInterval(saveIntervalRef.current);
     }, [syncProgressToServer]);
 
     useEffect(() => {
-        // 1. Frozen Playback Interval Checker (10s)
+        if (loading) return;
+
         const frozenCheckInterval = setInterval(() => {
             const video = videoRef.current;
             if (!video || video.paused || video.ended || isRecoveringRef.current) return;
 
             const current = video.currentTime;
 
-            // If time hasn't changed but video is supposed to be playing
             if (
                 Math.abs(current - lastCurrentTimeRef.current) < 0.1 &&
                 !video.paused &&
@@ -174,13 +301,11 @@ function ContentPlayer() {
             lastCurrentTimeRef.current = current;
         }, 3000);
 
-        // 2. Native Event Listeners
         const video = videoRef.current;
         if (!video) return;
 
         const handleStalled = () => {
             clearTimeout(stallTimerRef.current);
-            // Wait 5 seconds to see if it recovers naturally before forcing a reload
             stallTimerRef.current = setTimeout(() => {
                 recoverPlayback();
             }, 5000);
@@ -203,7 +328,7 @@ function ContentPlayer() {
             video.removeEventListener("error", handleStalled);
             video.removeEventListener("playing", handlePlaying);
         };
-    }, [recoverPlayback]);
+    }, [recoverPlayback, loading]);
 
     // ==========================================
     // 5. TIMERS & HELPERS
@@ -314,16 +439,10 @@ function ContentPlayer() {
                 if (isTouchDevice) {
                     if (!isIdle) {
                         setIsIdle(true);
-
-                        if (idleTimeoutRef.current) {
-                            clearTimeout(idleTimeoutRef.current);
-                        }
+                        if (idleTimeoutRef.current) clearTimeout(idleTimeoutRef.current);
                     } else {
                         setIsIdle(false);
-
-                        if (idleTimeoutRef.current) {
-                            clearTimeout(idleTimeoutRef.current);
-                        }
+                        if (idleTimeoutRef.current) clearTimeout(idleTimeoutRef.current);
 
                         idleTimeoutRef.current = setTimeout(() => {
                             if (videoRef.current && !videoRef.current.paused) {
@@ -401,20 +520,43 @@ function ContentPlayer() {
         if (!video) return;
         setDuration(video.duration);
 
-        // If we have saved progress from the 'player' controller, resume it
-        if (!hasResumedRef.current && contentData?.userProgress) {
+        const currentEpisodeKey = `${seasonIndex}-${episodeIndex}`;
+
+        if (lastResumedKeyRef.current !== currentEpisodeKey && contentData?.userProgress) {
             const savedProgress = contentData.userProgress.find(
                 p => p.seasonNumber === seasonIndex && p.episodeNumber === episodeIndex
             );
 
-            if (savedProgress && savedProgress.lastPosition > 0) {
-                // Only resume if they haven't finished the whole video (e.g., watched < 95%)
-                if (!savedProgress.isCompleted && savedProgress.lastPosition < video.duration - 10) {
-                    video.currentTime = savedProgress.lastPosition;
+            if (savedProgress) {
+                const safeDuration = (isNaN(video.duration) || video.duration === Infinity) ? 999999 : video.duration;
+
+                const isAlreadyCompleted = savedProgress.isCompleted || savedProgress.lastPosition >= safeDuration * 0.95;
+                if (isAlreadyCompleted) {
+                    hasMarkedCompletedRef.current = true;
+                }
+
+                if (savedProgress.lastPosition > 0 && !hasMarkedCompletedRef.current && savedProgress.lastPosition < safeDuration - 10) {
+                    isResumingRef.current = true;
+
+                    const attemptResume = () => {
+                        if (videoRef.current) {
+                            videoRef.current.currentTime = savedProgress.lastPosition;
+                            setCurrentTime(savedProgress.lastPosition);
+                        }
+                    };
+
+                    attemptResume();
+                    setTimeout(attemptResume, 150);
+                    setTimeout(attemptResume, 500);
+
                     toast.info(`Resumed at ${formatTime(savedProgress.lastPosition)}`, { theme: 'dark', autoClose: 3000 });
+
+                    setTimeout(() => {
+                        isResumingRef.current = false;
+                    }, 5000);
                 }
             }
-            hasResumedRef.current = true;
+            lastResumedKeyRef.current = currentEpisodeKey;
         }
     };
 
@@ -555,307 +697,332 @@ function ContentPlayer() {
 
             <PlayerLoader loading={loading} />
 
-            <div className="player-container py-4" style={{ display: loading ? 'none' : 'block' }}>
-                <div className="player-layout">
-                    <div className="video-section">
+            {!loading && (
+                <div className="player-container py-4">
+                    <div className="player-layout">
+                        <div className="video-section">
 
-                        <div
-                            className={`custom-player-wrapper ${isIdle ? 'is-idle' : ''} ${!isPlaying ? 'is-paused' : ''}`}
-                            onPointerMove={(e) => {
-                                if (e.pointerType === 'mouse') resetIdleTimer();
-                            }}
-                            onMouseEnter={resetIdleTimer}
-                            onMouseLeave={handlePlayerMouseLeave}
-                            ref={playerContainerRef}
-                            style={{ touchAction: 'none' }}
-                        >
-                            <video
-                                ref={videoRef}
-                                key={`${contentId}-${seasonIndex}-${episodeIndex}`}
-                                className="video-element"
-                                crossOrigin="anonymous"
-                                poster={contentData?.posterUrl?.horizontal || '{}'}
-                                onClick={handleVideoClick}
-                                onTimeUpdate={handleTimeUpdate}
-                                onLoadedMetadata={handleLoadedMetadata}
-                                onEnded={() => setIsPlaying(false)}
-                                onContextMenu={(e) => e.preventDefault()}
-                                onLoadStart={() => setIsVideoBuffering(true)}
-                                onPause={syncProgressToServer}
-                                onWaiting={() => setIsVideoBuffering(true)}
-                                onError={(e) => console.error("Video error:", e.nativeEvent)}
-                                onCanPlay={() => {
-                                    if (videoRef.current && videoRef.current.paused) setIsVideoBuffering(false);
+                            <div
+                                className={`custom-player-wrapper ${isIdle ? 'is-idle' : ''} ${!isPlaying ? 'is-paused' : ''}`}
+                                onPointerMove={(e) => {
+                                    if (e.pointerType === 'mouse') resetIdleTimer();
                                 }}
+                                onMouseEnter={resetIdleTimer}
+                                onMouseLeave={handlePlayerMouseLeave}
+                                ref={playerContainerRef}
+                                style={{ touchAction: 'none' }}
+                            >
+                                <video
+                                    ref={videoRef}
+                                    key={`${contentId}-${seasonIndex}-${episodeIndex}`}
+                                    className="video-element"
+                                    crossOrigin="anonymous"
+                                    poster={contentData?.posterUrl?.horizontal || '{}'}
+                                    onClick={handleVideoClick}
+                                    onTimeUpdate={handleTimeUpdate}
+                                    onLoadedMetadata={handleLoadedMetadata}
 
-                                // --- MOBILE TOUCH & SWIPE EVENTS ---
-                                onTouchStart={(e) => {
-                                    if (e.touches.length === 2 && isFullscreen && isPlaying) {
-                                        const dist = Math.hypot(
-                                            e.touches[0].clientX - e.touches[1].clientX,
-                                            e.touches[0].clientY - e.touches[1].clientY
-                                        );
-                                        initialPinchDistRef.current = dist;
-                                    } else if (e.touches.length === 1 && isFullscreen && isPlaying) {
-                                        const touch = e.touches[0];
-                                        touchStartRef.current = {
-                                            y: touch.clientY,
-                                            type: touch.clientX < window.innerWidth / 2 ? 'brightness' : 'volume',
-                                            startVol: volume,
-                                            startBright: brightness,
-                                            swiped: false
-                                        };
-                                    }
-                                }}
-
-                                onTouchMove={(e) => {
-                                    if (e.touches.length === 2 && initialPinchDistRef.current && isFullscreen && isPlaying) {
-                                        const dist = Math.hypot(
-                                            e.touches[0].clientX - e.touches[1].clientX,
-                                            e.touches[0].clientY - e.touches[1].clientY
-                                        );
-
-                                        if (Math.abs(dist - initialPinchDistRef.current) > 20) {
-                                            endHoldTimer();
+                                    onSeeked={() => {
+                                        if (isResumingRef.current) {
+                                            isResumingRef.current = false;
+                                            return;
                                         }
-
-                                        if (dist > initialPinchDistRef.current + 40) {
-                                            setIsZoomed(true);
-                                        } else if (dist < initialPinchDistRef.current - 40) {
-                                            setIsZoomed(false);
+                                        if (postSeekSaveTimeoutRef.current) {
+                                            clearTimeout(postSeekSaveTimeoutRef.current);
                                         }
-                                    } else if (e.touches.length === 1 && touchStartRef.current && isFullscreen && isPlaying) {
-                                        const touch = e.touches[0];
-                                        const deltaY = touchStartRef.current.y - touch.clientY;
+                                        postSeekSaveTimeoutRef.current = setTimeout(() => {
+                                            const video = videoRef.current;
+                                            if (video && video.readyState >= 2) {
+                                                syncProgressToServer(false);
+                                            }
+                                        }, 3000);
+                                    }}
 
-                                        if (Math.abs(deltaY) > 20) {
-                                            touchStartRef.current.swiped = true;
-                                            endHoldTimer();
+                                    onEnded={() => setIsPlaying(false)}
+                                    onContextMenu={(e) => e.preventDefault()}
 
-                                            const change = (deltaY / window.innerHeight) * 1.5;
+                                    onPlaying={() => {
+                                        setIsVideoBuffering(false);
+                                        isRecoveringRef.current = false;
+                                    }}
 
-                                            if (touchStartRef.current.type === 'volume') {
-                                                let newVol = Math.max(0, Math.min(1, touchStartRef.current.startVol + change));
-                                                if (videoRef.current) {
-                                                    videoRef.current.volume = newVol;
-                                                    setVolume(newVol);
-                                                    setIsMuted(newVol === 0);
-                                                    showGestureIndicator('volume', newVol);
+                                    onLoadStart={() => setIsVideoBuffering(true)}
+                                    onPause={() => syncProgressToServer(false)}
+                                    onWaiting={() => setIsVideoBuffering(true)}
+                                    onError={(e) => console.error("Video error:", e.nativeEvent)}
+                                    onCanPlay={() => {
+                                        if (videoRef.current && videoRef.current.paused) setIsVideoBuffering(false);
+                                    }}
+
+                                    // --- MOBILE TOUCH & SWIPE EVENTS ---
+                                    onTouchStart={(e) => {
+                                        if (e.touches.length === 2 && isFullscreen && isPlaying) {
+                                            const dist = Math.hypot(
+                                                e.touches[0].clientX - e.touches[1].clientX,
+                                                e.touches[0].clientY - e.touches[1].clientY
+                                            );
+                                            initialPinchDistRef.current = dist;
+                                        } else if (e.touches.length === 1 && isFullscreen && isPlaying) {
+                                            const touch = e.touches[0];
+                                            touchStartRef.current = {
+                                                y: touch.clientY,
+                                                type: touch.clientX < window.innerWidth / 2 ? 'brightness' : 'volume',
+                                                startVol: volume,
+                                                startBright: brightness,
+                                                swiped: false
+                                            };
+                                        }
+                                    }}
+
+                                    onTouchMove={(e) => {
+                                        if (e.touches.length === 2 && initialPinchDistRef.current && isFullscreen && isPlaying) {
+                                            const dist = Math.hypot(
+                                                e.touches[0].clientX - e.touches[1].clientX,
+                                                e.touches[0].clientY - e.touches[1].clientY
+                                            );
+
+                                            if (Math.abs(dist - initialPinchDistRef.current) > 20) {
+                                                endHoldTimer();
+                                            }
+
+                                            if (dist > initialPinchDistRef.current + 40) {
+                                                setIsZoomed(true);
+                                            } else if (dist < initialPinchDistRef.current - 40) {
+                                                setIsZoomed(false);
+                                            }
+                                        } else if (e.touches.length === 1 && touchStartRef.current && isFullscreen && isPlaying) {
+                                            const touch = e.touches[0];
+                                            const deltaY = touchStartRef.current.y - touch.clientY;
+
+                                            if (Math.abs(deltaY) > 20) {
+                                                touchStartRef.current.swiped = true;
+                                                endHoldTimer();
+
+                                                const change = (deltaY / window.innerHeight) * 1.5;
+
+                                                if (touchStartRef.current.type === 'volume') {
+                                                    let newVol = Math.max(0, Math.min(1, touchStartRef.current.startVol + change));
+                                                    if (videoRef.current) {
+                                                        videoRef.current.volume = newVol;
+                                                        setVolume(newVol);
+                                                        setIsMuted(newVol === 0);
+                                                        showGestureIndicator('volume', newVol);
+                                                    }
+                                                } else {
+                                                    let newBright = Math.max(0.1, Math.min(1, touchStartRef.current.startBright + change));
+                                                    setBrightness(newBright);
+                                                    showGestureIndicator('brightness', newBright);
                                                 }
-                                            } else {
-                                                let newBright = Math.max(0.1, Math.min(1, touchStartRef.current.startBright + change));
-                                                setBrightness(newBright);
-                                                showGestureIndicator('brightness', newBright);
                                             }
                                         }
-                                    }
-                                }}
+                                    }}
 
-                                onTouchEnd={() => {
-                                    initialPinchDistRef.current = null;
-                                    if (touchStartRef.current) {
-                                        setTimeout(() => { touchStartRef.current = null; }, 100);
-                                    }
-                                }}
+                                    onTouchEnd={() => {
+                                        initialPinchDistRef.current = null;
+                                        if (touchStartRef.current) {
+                                            setTimeout(() => { touchStartRef.current = null; }, 100);
+                                        }
+                                    }}
 
-                                onPointerDown={(e) => {
-                                    if (!e.isPrimary || !isPlaying) return;
-                                    startHoldTimer();
-                                }}
-                                onPointerUp={() => {
-                                    if (endHoldTimer()) {
-                                        ignoreNextClickRef.current = true;
-                                        setTimeout(() => ignoreNextClickRef.current = false, 150);
-                                    }
-                                }}
-                                onPointerLeave={() => endHoldTimer()}
-                                onPointerCancel={() => endHoldTimer()}
+                                    onPointerDown={(e) => {
+                                        if (!e.isPrimary || !isPlaying) return;
+                                        startHoldTimer();
+                                    }}
+                                    onPointerUp={() => {
+                                        if (endHoldTimer()) {
+                                            ignoreNextClickRef.current = true;
+                                            setTimeout(() => ignoreNextClickRef.current = false, 150);
+                                        }
+                                    }}
+                                    onPointerLeave={() => endHoldTimer()}
+                                    onPointerCancel={() => endHoldTimer()}
 
-                                style={{
-                                    objectFit: (isFullscreen && isZoomed) ? 'cover' : 'contain',
-                                    filter: `brightness(${brightness})`
-                                }}
-                            >
-                                <source
-                                    src={`${configaruration.BASE_URL}/user/stream/${contentId}?season=${seasonIndex}&episode=${episodeIndex}`}
-                                    type="video/mp4"
-                                />
-                                {contentData?.subtitles?.[seasonIndex]?.[episodeIndex] && (
-                                    <track
-                                        src={contentData?.subtitles?.[seasonIndex]?.[episodeIndex]}
-                                        kind="subtitles"
-                                        srcLang="en"
-                                        label="English"
+                                    style={{
+                                        objectFit: (isFullscreen && isZoomed) ? 'cover' : 'contain',
+                                        filter: `brightness(${brightness})`
+                                    }}
+                                >
+                                    <source
+                                        src={`${configaruration.BASE_URL}/user/stream/${contentId}?season=${seasonIndex}&episode=${episodeIndex}`}
+                                        type="video/mp4"
                                     />
+                                    {contentData?.subtitles?.[seasonIndex]?.[episodeIndex] && (
+                                        <track
+                                            src={contentData?.subtitles?.[seasonIndex]?.[episodeIndex]}
+                                            kind="subtitles"
+                                            srcLang="en"
+                                            label="English"
+                                        />
+                                    )}
+                                    Your browser does not support the video tag.
+                                </video>
+
+                                {/* 2X Speed Badge */}
+                                {showSpeedBadge && (
+                                    <div className="speed-badge">
+                                        <span>2x Speed</span>
+                                        <i className="bi bi-chevron-double-right"></i>
+                                    </div>
                                 )}
-                                Your browser does not support the video tag.
-                            </video>
 
-                            {/* 2X Speed Badge */}
-                            {showSpeedBadge && (
-                                <div className="speed-badge">
-                                    <span>2x Speed</span>
-                                    <i className="bi bi-chevron-double-right"></i>
-                                </div>
-                            )}
-
-                            {/* VLC Style Volume/Brightness Indicators */}
-                            {gestureInfo && (
-                                <div className="gesture-indicator">
-                                    <i className={`bi ${gestureInfo.type === 'volume' ? (gestureInfo.value === 0 ? 'bi-volume-mute-fill' : 'bi-volume-up-fill') : 'bi-brightness-high-fill'}`}></i>
-                                    <div className="gesture-bar-bg">
-                                        <div className="gesture-bar-fill" style={{ width: `${gestureInfo.value * 100}%` }}></div>
+                                {/* VLC Style Volume/Brightness Indicators */}
+                                {gestureInfo && (
+                                    <div className="gesture-indicator">
+                                        <i className={`bi ${gestureInfo.type === 'volume' ? (gestureInfo.value === 0 ? 'bi-volume-mute-fill' : 'bi-volume-up-fill') : 'bi-brightness-high-fill'}`}></i>
+                                        <div className="gesture-bar-bg">
+                                            <div className="gesture-bar-fill" style={{ width: `${gestureInfo.value * 100}%` }}></div>
+                                        </div>
+                                        <span>{Math.round(gestureInfo.value * 100)}%</span>
                                     </div>
-                                    <span>{Math.round(gestureInfo.value * 100)}%</span>
-                                </div>
-                            )}
+                                )}
 
-                            {isVideoBuffering && (
-                                <div className="video-spinner-overlay">
-                                    <div className="video-spinner"></div>
-                                </div>
-                            )}
-
-                            {/* Seek Animations */}
-                            <div className={`seek-ripple-overlay left ${seekAnimation === 'backward' ? 'animate' : ''}`}>
-                                <div className="ripple-circle"></div>
-                                <div className="seek-content">
-                                    <div className="arrows">
-                                        <i className="bi bi-caret-left-fill"></i>
-                                        <i className="bi bi-caret-left-fill"></i>
-                                        <i className="bi bi-caret-left-fill"></i>
+                                {isVideoBuffering && (
+                                    <div className="video-spinner-overlay">
+                                        <div className="video-spinner"></div>
                                     </div>
-                                    <span>10 seconds</span>
-                                </div>
-                            </div>
+                                )}
 
-                            <div className={`seek-ripple-overlay right ${seekAnimation === 'forward' ? 'animate' : ''}`}>
-                                <div className="ripple-circle"></div>
-                                <div className="seek-content">
-                                    <div className="arrows">
-                                        <i className="bi bi-caret-right-fill"></i>
-                                        <i className="bi bi-caret-right-fill"></i>
-                                        <i className="bi bi-caret-right-fill"></i>
-                                    </div>
-                                    <span>10 seconds</span>
-                                </div>
-                            </div>
-
-                            <div className={`center-play-overlay ${(isPlaying || isVideoBuffering) ? 'is-playing' : ''}`} onClick={togglePlay}>
-                                <button className="center-play-btn">
-                                    <i className="bi bi-play-fill"></i>
-                                </button>
-                            </div>
-
-                            <div className="custom-controls">
-                                <div className="progress-container" ref={progressRef} onMouseDown={(e) => { setIsDraggingProgress(true); handleProgressScrub(e); }} onTouchStart={(e) => { setIsDraggingProgress(true); handleProgressScrub(e); }}>
-                                    <div className="progress-bar" style={{ width: '100%', height: '100%', position: 'relative' }}>
-                                        <div className="progress-filled" style={{ width: `${progressPercentage}%` }}></div>
-                                        <div className="progress-thumb" style={{ left: `${progressPercentage}%` }}></div>
+                                {/* Seek Animations */}
+                                <div className={`seek-ripple-overlay left ${seekAnimation === 'backward' ? 'animate' : ''}`}>
+                                    <div className="ripple-circle"></div>
+                                    <div className="seek-content">
+                                        <div className="arrows">
+                                            <i className="bi bi-caret-left-fill"></i>
+                                            <i className="bi bi-caret-left-fill"></i>
+                                            <i className="bi bi-caret-left-fill"></i>
+                                        </div>
+                                        <span>10 seconds</span>
                                     </div>
                                 </div>
 
-                                <div className="controls-main">
-                                    <div className="controls-left">
-                                        <button className="control-btn play-btn-primary" onClick={togglePlay}>
-                                            <i className={`bi ${isPlaying ? 'bi-pause-fill' : 'bi-play-fill'}`}></i>
-                                        </button>
+                                <div className={`seek-ripple-overlay right ${seekAnimation === 'forward' ? 'animate' : ''}`}>
+                                    <div className="ripple-circle"></div>
+                                    <div className="seek-content">
+                                        <div className="arrows">
+                                            <i className="bi bi-caret-right-fill"></i>
+                                            <i className="bi bi-caret-right-fill"></i>
+                                            <i className="bi bi-caret-right-fill"></i>
+                                        </div>
+                                        <span>10 seconds</span>
+                                    </div>
+                                </div>
 
-                                        <button className="control-btn" onClick={() => skip(-10)} title="Rewind 10s">
-                                            <i className="bi bi-skip-backward-fill"></i>
-                                        </button>
-                                        <button className="control-btn" onClick={() => skip(10)} title="Forward 10s">
-                                            <i className="bi bi-skip-forward-fill"></i>
-                                        </button>
+                                <div className={`center-play-overlay ${(isPlaying || isVideoBuffering) ? 'is-playing' : ''}`} onClick={togglePlay}>
+                                    <button className="center-play-btn">
+                                        <i className="bi bi-play-fill"></i>
+                                    </button>
+                                </div>
 
-                                        <div className={`volume-container ${showVolumeUI ? 'force-show' : ''}`}>
-                                            <button className="control-btn" onClick={() => { toggleMute(); triggerVolumeUI(); }}>
-                                                <i className={`bi ${isMuted || volume === 0 ? 'bi-volume-mute-fill' : volume < 0.5 ? 'bi-volume-down-fill' : 'bi-volume-up-fill'}`}></i>
+                                <div className="custom-controls">
+                                    <div className="progress-container" ref={progressRef} onMouseDown={(e) => { setIsDraggingProgress(true); handleProgressScrub(e); }} onTouchStart={(e) => { setIsDraggingProgress(true); handleProgressScrub(e); }}>
+                                        <div className="progress-bar" style={{ width: '100%', height: '100%', position: 'relative' }}>
+                                            <div className="progress-filled" style={{ width: `${progressPercentage}%` }}></div>
+                                            <div className="progress-thumb" style={{ left: `${progressPercentage}%` }}></div>
+                                        </div>
+                                    </div>
+
+                                    <div className="controls-main">
+                                        <div className="controls-left">
+                                            <button className="control-btn play-btn-primary" onClick={togglePlay}>
+                                                <i className={`bi ${isPlaying ? 'bi-pause-fill' : 'bi-play-fill'}`}></i>
                                             </button>
-                                            <div className="volume-slider-container">
-                                                <div className="volume-slider" ref={volumeRef} onMouseDown={(e) => { setIsDraggingVolume(true); handleVolumeScrub(e); }} onTouchStart={(e) => { setIsDraggingVolume(true); handleVolumeScrub(e); }}>
-                                                    <div className="volume-filled" style={{ width: `${volumePercentage}%` }}></div>
-                                                    <div className="volume-thumb" style={{ left: `${volumePercentage}%` }}></div>
+
+                                            <button className="control-btn" onClick={() => skip(-10)} title="Rewind 10s">
+                                                <i className="bi bi-skip-backward-fill"></i>
+                                            </button>
+                                            <button className="control-btn" onClick={() => skip(10)} title="Forward 10s">
+                                                <i className="bi bi-skip-forward-fill"></i>
+                                            </button>
+
+                                            <div className={`volume-container ${showVolumeUI ? 'force-show' : ''}`}>
+                                                <button className="control-btn" onClick={() => { toggleMute(); triggerVolumeUI(); }}>
+                                                    <i className={`bi ${isMuted || volume === 0 ? 'bi-volume-mute-fill' : volume < 0.5 ? 'bi-volume-down-fill' : 'bi-volume-up-fill'}`}></i>
+                                                </button>
+                                                <div className="volume-slider-container">
+                                                    <div className="volume-slider" ref={volumeRef} onMouseDown={(e) => { setIsDraggingVolume(true); handleVolumeScrub(e); }} onTouchStart={(e) => { setIsDraggingVolume(true); handleVolumeScrub(e); }}>
+                                                        <div className="volume-filled" style={{ width: `${volumePercentage}%` }}></div>
+                                                        <div className="volume-thumb" style={{ left: `${volumePercentage}%` }}></div>
+                                                    </div>
                                                 </div>
                                             </div>
+
+                                            <span className="time-display">
+                                                {formatTime(currentTime)} / {formatTime(duration)}
+                                            </span>
                                         </div>
 
-                                        <span className="time-display">
-                                            {formatTime(currentTime)} / {formatTime(duration)}
-                                        </span>
-                                    </div>
-
-                                    <div className="controls-right">
-                                        <button className="control-text-btn" onClick={changePlaybackRate}>{playbackRate}x</button>
-                                        <button
-                                            className="control-btn"
-                                            title={hasCaptions ? "Subtitles" : "No Subtitles Available"}
-                                            onClick={toggleCaptions}
-                                            disabled={!hasCaptions}
-                                            style={{
-                                                color: (captionsEnabled && hasCaptions) ? '#f5b81b' : '',
-                                                opacity: hasCaptions ? 1 : 0.35,
-                                                cursor: hasCaptions ? 'pointer' : 'not-allowed'
-                                            }}
-                                        >
-                                            <i className={`bi ${(captionsEnabled && hasCaptions) ? 'bi-badge-cc-fill' : 'bi-badge-cc'}`}></i>
-                                        </button>
-                                        <button className="control-btn" onClick={toggleFullscreen}>
-                                            <i className={`bi ${isFullscreen ? 'bi-fullscreen-exit' : 'bi-fullscreen'}`}></i>
-                                        </button>
+                                        <div className="controls-right">
+                                            <button className="control-text-btn" onClick={changePlaybackRate}>{playbackRate}x</button>
+                                            <button
+                                                className="control-btn"
+                                                title={hasCaptions ? "Subtitles" : "No Subtitles Available"}
+                                                onClick={toggleCaptions}
+                                                disabled={!hasCaptions}
+                                                style={{
+                                                    color: (captionsEnabled && hasCaptions) ? '#f5b81b' : '',
+                                                    opacity: hasCaptions ? 1 : 0.35,
+                                                    cursor: hasCaptions ? 'pointer' : 'not-allowed'
+                                                }}
+                                            >
+                                                <i className={`bi ${(captionsEnabled && hasCaptions) ? 'bi-badge-cc-fill' : 'bi-badge-cc'}`}></i>
+                                            </button>
+                                            <button className="control-btn" onClick={toggleFullscreen}>
+                                                <i className={`bi ${isFullscreen ? 'bi-fullscreen-exit' : 'bi-fullscreen'}`}></i>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div className="series-content-box mt-4">
-                            <div className="d-flex justify-content-between flex-wrap gap-3 mb-4">
-                                <div>
-                                    <h1 className="series-title mb-2">{contentData?.title || 'Content Title'}</h1>
-                                    <p className="series-subtitle mb-0">{contentData?.genre?.join(' • ') || 'Genre'}</p>
+                            <div className="series-content-box mt-4">
+                                <div className="d-flex justify-content-between flex-wrap gap-3 mb-4">
+                                    <div>
+                                        <h1 className="series-title mb-2">{contentData?.title || 'Content Title'}</h1>
+                                        <p className="series-subtitle mb-0">{contentData?.genre?.join(' • ') || 'Genre'}</p>
+                                    </div>
+
+                                    <div className="season-dropdown" style={{ display: contentData?.contentType === 'series' ? 'block' : 'none' }}>
+                                        <select
+                                            value={seasonIndex}
+                                            onChange={(e) => {
+                                                setSeasonIndex(parseInt(e.target.value));
+                                                setEpisodeIndex(0);
+                                            }}
+                                            className="season-select">
+                                            {contentData?.contentIds?.map((_, i) => (
+                                                <option key={contentData._id + i} value={i}>Season {i + 1}</option>
+                                            ))}
+                                        </select>
+                                    </div>
                                 </div>
 
-                                <div className="season-dropdown" style={{ display: contentData?.contentType === 'series' ? 'block' : 'none' }}>
-                                    <select
-                                        value={seasonIndex}
-                                        onChange={(e) => {
-                                            setSeasonIndex(parseInt(e.target.value));
-                                            setEpisodeIndex(0);
-                                        }}
-                                        className="season-select">
-                                        {contentData?.contentIds?.map((_, i) => (
-                                            <option key={contentData._id + i} value={i}>Season {i + 1}</option>
+                                <p className="series-description">{contentData?.description || 'Lorem ipsum dolor sit amet...'}</p>
+
+                                <div className="episode-wrapper mt-4" style={{ display: contentData?.contentType === 'series' ? 'block' : 'none' }}>
+                                    <h4 className="episode-heading mb-3">Episodes</h4>
+                                    <div className="episode-list">
+                                        {episodes.map((_, index) => (
+                                            <button
+                                                key={index}
+                                                onClick={() => {
+                                                    setEpisodeIndex(index);
+                                                    setIsPlaying(false);
+                                                    setCurrentTime(0);
+                                                    setIsVideoBuffering(true);
+                                                }}
+                                                className={`episode-btn ${episodeIndex === index ? 'active' : ''}`}>
+                                                EP {index + 1}
+                                            </button>
                                         ))}
-                                    </select>
-                                </div>
-                            </div>
-
-                            <p className="series-description">{contentData?.description || 'Lorem ipsum dolor sit amet...'}</p>
-
-                            <div className="episode-wrapper mt-4" style={{ display: contentData?.contentType === 'series' ? 'block' : 'none' }}>
-                                <h4 className="episode-heading mb-3">Episodes</h4>
-                                <div className="episode-list">
-                                    {episodes.map((_, index) => (
-                                        <button
-                                            key={index}
-                                            onClick={() => {
-                                                setEpisodeIndex(index);
-                                                setIsPlaying(false);
-                                                setCurrentTime(0);
-                                                setIsVideoBuffering(true);
-                                            }}
-                                            className={`episode-btn ${episodeIndex === index ? 'active' : ''}`}>
-                                            EP {index + 1}
-                                        </button>
-                                    ))}
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <ImdbCard contentData={contentData} />
+                        <ImdbCard contentData={contentData} />
+                    </div>
                 </div>
-            </div>
+            )}
         </main>
     );
 }
