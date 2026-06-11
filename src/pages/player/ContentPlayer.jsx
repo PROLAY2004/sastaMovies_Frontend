@@ -75,16 +75,57 @@ function ContentPlayer() {
     const [gestureInfo, setGestureInfo] = useState(null);
 
     // ==========================================
-    // 3. DATA FETCHING & RESUME RESETS
+    // 3. DATA FETCHING, AUTO-SELECT & RESUME RESETS
     // ==========================================
     useEffect(() => {
         window.scrollTo(0, 0);
         const fetchContent = async () => {
             const isSuccess = await displayPlayer(navigate, toast, contentId);
             if (isSuccess) {
+                const contentInfo = isSuccess.contentInfo;
+
+                // [NEW UPGRADE]: Smart Episode Auto-Selector for Series
+                if (contentInfo?.contentType === 'series' && contentInfo?.userProgress?.length > 0) {
+                    // Sort all progress to find the furthest reached episode
+                    const sortedProgress = [...contentInfo.userProgress].sort((a, b) => {
+                        if (a.seasonNumber !== b.seasonNumber) return a.seasonNumber - b.seasonNumber;
+                        return a.episodeNumber - b.episodeNumber;
+                    });
+
+                    const furthest = sortedProgress[sortedProgress.length - 1];
+
+                    if (!furthest.isCompleted) {
+                        // If furthest is incomplete, select it to resume
+                        setSeasonIndex(furthest.seasonNumber);
+                        setEpisodeIndex(furthest.episodeNumber);
+                    } else {
+                        // If furthest is completed, calculate the next logical episode
+                        let nextSeason = furthest.seasonNumber;
+                        let nextEpisode = furthest.episodeNumber + 1;
+
+                        // Does the next episode exist in the current season?
+                        if (contentInfo.contentIds?.[nextSeason]?.length > nextEpisode) {
+                            setSeasonIndex(nextSeason);
+                            setEpisodeIndex(nextEpisode);
+                        } else {
+                            // Current season is done. Move to next season, episode 1 (index 0)
+                            nextSeason++;
+                            nextEpisode = 0;
+                            // Does the next season exist?
+                            if (contentInfo.contentIds?.length > nextSeason) {
+                                setSeasonIndex(nextSeason);
+                                setEpisodeIndex(nextEpisode);
+                            } else {
+                                // Series completed! Reset to S1 E1
+                                setSeasonIndex(0);
+                                setEpisodeIndex(0);
+                            }
+                        }
+                    }
+                }
+
+                setContentData(contentInfo);
                 setLoading(false);
-                console.log(isSuccess.contentInfo);
-                setContentData(isSuccess.contentInfo);
             }
         };
         fetchContent();
@@ -139,7 +180,7 @@ function ContentPlayer() {
         }
 
         const currentPos = video.currentTime;
-        const threshold = safeDuration > 0 ? safeDuration * 0.93 : 999999;
+        const threshold = safeDuration > 0 ? safeDuration * 0.95 : 999999;
         const isNearEnd = safeDuration > 0 && currentPos >= threshold;
 
         // 1. Is it already completed in DB?
@@ -153,9 +194,7 @@ function ContentPlayer() {
             }
         }
 
-        // [THE NEW FIX]: 2. THE REWATCH DETECTOR
-        // If the episode is marked as completed, but they scrub back to the beginning (first 60s or 5%),
-        // we instantly shatter the lock and reset the episode so they can start a fresh watch count!
+        // 2. THE REWATCH DETECTOR (Reset completion if they start from beginning)
         const isRestarting = currentPos < 60 || (safeDuration > 0 && currentPos < safeDuration * 0.05);
 
         if ((hasMarkedCompletedRef.current || alreadyCompletedDB) && isRestarting) {
@@ -163,27 +202,26 @@ function ContentPlayer() {
             alreadyCompletedDB = false;
         }
 
-        // 3. THE HARD LOCK (Prevents credit-scrubbing double counts)
-        if (hasMarkedCompletedRef.current || alreadyCompletedDB) {
-            return;
-        }
+        const isActuallyCompleted = hasMarkedCompletedRef.current || alreadyCompletedDB;
 
-        // 4. THE ANTI-CHEAT FIX (Wait for interval if near end)
+        // 3. THE ANTI-CHEAT FIX: 
+        // If they scrub to >= 95% manually, ignore the save. Force them to wait for the 20s interval.
         if (isNearEnd && !isInterval) {
             return;
         }
 
-        // 5. PREVENT SPAM
+        // 4. PREVENT SPAM: Ignore rapid saves
         if (Math.abs(currentPos - lastSavedPositionRef.current) < 1) return;
 
-        // 6. THE ONE-AND-DONE LOCK
+        // 5. THE ONE-AND-DONE LOCK FOR COMPLETION
         if (isNearEnd && isInterval) {
             hasMarkedCompletedRef.current = true;
         }
 
         lastSavedPositionRef.current = currentPos;
 
-        const finalPositionToSave = isNearEnd ? safeDuration : currentPos;
+        // If completed, save full duration. If below 95%, save exactly where they are!
+        const finalPositionToSave = (isNearEnd && isInterval) ? safeDuration : currentPos;
 
         const dataToSave = {
             contentId: contentData._id,
@@ -192,7 +230,9 @@ function ContentPlayer() {
             seasonNumber: seasonIndex,
             episodeNumber: episodeIndex,
             lastPosition: finalPositionToSave,
-            duration: safeDuration
+            duration: safeDuration,
+            // Pass this to backend so it knows they scrubbed backwards but already completed it!
+            isCompleted: hasMarkedCompletedRef.current || alreadyCompletedDB
         };
 
         saveProgress(navigate, toast, dataToSave).then((success) => {
@@ -210,7 +250,6 @@ function ContentPlayer() {
                         updatedProgress[existingIdx] = {
                             ...updatedProgress[existingIdx],
                             lastPosition: finalPositionToSave,
-                            // This ensures the local state resets if they are rewatching!
                             isCompleted: hasMarkedCompletedRef.current || (updatedProgress[existingIdx].isCompleted && !isRestarting)
                         };
                     } else {
@@ -491,7 +530,7 @@ function ContentPlayer() {
             if (savedProgress) {
                 const safeDuration = (isNaN(video.duration) || video.duration === Infinity) ? 999999 : video.duration;
 
-                const isAlreadyCompleted = savedProgress.isCompleted || savedProgress.lastPosition >= safeDuration * 0.93;
+                const isAlreadyCompleted = savedProgress.isCompleted || savedProgress.lastPosition >= safeDuration * 0.95;
                 if (isAlreadyCompleted) {
                     hasMarkedCompletedRef.current = true;
                 }
@@ -693,10 +732,10 @@ function ContentPlayer() {
                                         }
                                         postSeekSaveTimeoutRef.current = setTimeout(() => {
                                             const video = videoRef.current;
-                                            if (video && !video.paused && video.readyState >= 2) {
+                                            if (video && video.readyState >= 2) {
                                                 syncProgressToServer(false);
                                             }
-                                        }, 2000);
+                                        }, 3000);
                                     }}
 
                                     onEnded={() => setIsPlaying(false)}
